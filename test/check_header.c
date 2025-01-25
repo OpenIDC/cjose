@@ -83,10 +83,11 @@ START_TEST(test_cjose_header_set_get_raw)
 {
     cjose_err err;
     bool result;
-    const char *epk_get, *epk_set = "{\"kty\":\"EC\","
-                                    "\"crv\":\"P-256\","
-                                    "\"x\":\"_XNXAUbQMEboZR7uG-SqA8pQPWj-BCjaEx3LyXdX1lA\","
-                                    "\"y\":\"8o4GHhoWsWI40dK1LGGR7X9tCoOt-lcc5Sqw2yD8Gvw\"}";
+    const char *epk_set = "{\"kty\":\"EC\","
+                          "\"crv\":\"P-256\","
+                          "\"x\":\"_XNXAUbQMEboZR7uG-SqA8pQPWj-BCjaEx3LyXdX1lA\","
+                          "\"y\":\"8o4GHhoWsWI40dK1LGGR7X9tCoOt-lcc5Sqw2yD8Gvw\"}";
+    char *epk_get = NULL;
 
     cjose_header_t *header = cjose_header_new(&err);
     ck_assert_msg(NULL != header, "cjose_header_new failed");
@@ -102,6 +103,7 @@ START_TEST(test_cjose_header_set_get_raw)
                   "expected: %s, found %s",
                   ((epk_set) ? epk_set : "null"), ((epk_get) ? epk_get : "null"));
 
+    free(epk_get);
     cjose_header_release(header);
 }
 END_TEST

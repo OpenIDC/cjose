@@ -1,7 +1,10 @@
 # Release Notes #
 
+<a name="v1.0.0"></a>
+## [v1.0.0](https://github.com/OpenIDC/cjose/compare/v1.0.0...v0.6.2.3)  (2025-01-25)
+* use OpenSSL 3.x non-deprecated APIs only; closes ##25
 * fix memory leak in ECDH-ES JWE encryption/decryption
-* fix rsa_q = NULL initialization in _RSA_private_fields
+* fix rsa_q = NULL assignment in jwk.c _RSA_private_fields
 * fix memory allocation check (typo) in jwk.c (https://github.com/OpenIDC/cjose/security/code-scanning/2)
 
 <a name="v0.6.2.3"></a>

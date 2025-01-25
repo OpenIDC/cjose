@@ -79,6 +79,7 @@ static const char *JWE_RSA
 static const char *PLAINTEXT = "If you reveal your secrets to the wind, you should not blame the "
                                "wind for revealing them to the trees. — Kahlil Gibran";
 
+#ifdef HAVE_RSA_PKCS1_PADDING
 static const cjose_jwk_t *cjose_multi_key_locator(cjose_jwe_t *jwe, cjose_header_t *hdr, void *data)
 {
     const char *kid = cjose_header_get(hdr, CJOSE_HDR_KID, NULL);
@@ -100,6 +101,7 @@ static const cjose_jwk_t *cjose_multi_key_locator(cjose_jwe_t *jwe, cjose_header
 }
 
 static const cjose_jwk_t *cjose_multi_key_locator_none(cjose_jwe_t *jwe, cjose_header_t *hdr, void *data) { return NULL; }
+#endif
 
 START_TEST(test_cjose_jwe_node_jose_encrypt_self_decrypt)
 {
@@ -165,8 +167,8 @@ static void _self_encrypt_self_decrypt_with_key(const char *alg, const char *enc
     // create the JWE
     size_t plain1_len = strlen(plain1);
     cjose_jwe_t *jwe1 = cjose_jwe_encrypt(jwk, hdr, plain1, plain1_len, &err);
-    ck_assert_msg(NULL != jwe1, "cjose_jwe_encrypt failed: %s, file: %s, function: %s, line: %ld", err.message, err.file,
-                  err.function, err.line);
+    ck_assert_msg(NULL != jwe1, "cjose_jwe_encrypt [%s/%s] failed: %s, file: %s, function: %s, line: %ld", alg, enc, err.message,
+                  err.file, err.function, err.line);
     // ck_assert(hdr == cjose_jwe_get_protected(jwe1));
 
     // get the compact serialization of JWE
@@ -186,9 +188,9 @@ static void _self_encrypt_self_decrypt_with_key(const char *alg, const char *enc
     size_t plain2_len = 0;
     plain2 = cjose_jwe_decrypt(jwe2, jwk, &plain2_len, &err);
     ck_assert_msg(NULL != plain2,
-                  "cjose_jwe_decrypt failed: "
+                  "cjose_jwe_decrypt [%s/%s] failed: "
                   "%s, file: %s, function: %s, line: %ld",
-                  err.message, err.file, err.function, err.line);
+                  alg, enc, err.message, err.file, err.function, err.line);
 
     // confirm plain2 == plain1
     ck_assert(json_equal((json_t *)cjose_jwe_get_protected(jwe1), (json_t *)cjose_jwe_get_protected(jwe2)));
@@ -199,11 +201,11 @@ static void _self_encrypt_self_decrypt_with_key(const char *alg, const char *enc
     ck_assert_msg(strncmp(plain1, plain2, plain2_len) == 0, "decrypted plaintext does not match encrypted plaintext");
 
     cjose_get_dealloc()(plain2);
-    cjose_header_release(hdr);
-    cjose_jwe_release(jwe1);
     cjose_jwe_release(jwe2);
-    cjose_jwk_release(jwk);
     cjose_get_dealloc()(compact);
+    cjose_jwe_release(jwe1);
+    cjose_header_release(hdr);
+    cjose_jwk_release(jwk);
 }
 
 static void _self_encrypt_self_decrypt(const char *plain1)
@@ -325,9 +327,9 @@ _self_encrypt_self_decrypt_with_key_iv(const char *alg, const char *enc, const c
     size_t plain2_len = 0;
     plain2 = cjose_jwe_decrypt(jwe2, jwk, &plain2_len, &err);
     ck_assert_msg(NULL != plain2,
-                  "cjose_jwe_decrypt failed: "
+                  "cjose_jwe_decrypt [%s/%s] failed: "
                   "%s, file: %s, function: %s, line: %ld",
-                  err.message, err.file, err.function, err.line);
+                  alg, enc, err.message, err.file, err.function, err.line);
 
     // confirm plain2 == plain1
     ck_assert(json_equal((json_t *)cjose_jwe_get_protected(jwe1), (json_t *)cjose_jwe_get_protected(jwe2)));
@@ -338,12 +340,12 @@ _self_encrypt_self_decrypt_with_key_iv(const char *alg, const char *enc, const c
     ck_assert_msg(strncmp(plain1, plain2, plain2_len) == 0, "decrypted plaintext does not match encrypted plaintext");
 
     cjose_get_dealloc()(plain2);
-    cjose_header_release(hdr);
-    free(iv);
-    cjose_jwe_release(jwe1);
     cjose_jwe_release(jwe2);
-    cjose_jwk_release(jwk);
     cjose_get_dealloc()(compact);
+    cjose_jwe_release(jwe1);
+    free(iv);
+    cjose_header_release(hdr);
+    cjose_jwk_release(jwk);
 }
 
 static void _self_encrypt_self_decrypt_iv(const char *plain1)
@@ -1162,9 +1164,9 @@ START_TEST(test_cjose_jwe_decrypt_rsa)
         size_t plain1_len = 0;
         uint8_t *plain1 = cjose_jwe_decrypt(jwe, jwk, &plain1_len, &err);
         ck_assert_msg(NULL != plain1,
-                      "cjose_jwe_get_plaintext failed: "
+                      "cjose_jwe_decrypt [%d] failed: "
                       "%s, file: %s, function: %s, line: %ld",
-                      err.message, err.file, err.function, err.line);
+                      i, err.message, err.file, err.function, err.line);
 
         // confirm plain == PLAINTEXT_S
         ck_assert_msg(plain1_len == strlen(JWE_RSA[i].plaintext),
@@ -1180,6 +1182,8 @@ START_TEST(test_cjose_jwe_decrypt_rsa)
     }
 }
 END_TEST
+
+#ifdef HAVE_RSA_PKCS1_PADDING
 
 static void _cjose_test_json_serial(const char *json, const char *match_json, cjose_jwe_recipient_t *rec)
 {
@@ -1229,7 +1233,7 @@ static void _cjose_test_empty_headers(cjose_jwk_t *key)
     cjose_header_set(hdr, CJOSE_HDR_ALG, CJOSE_HDR_ALG_RSA_OAEP, &err);
     cjose_header_set(hdr, CJOSE_HDR_ENC, CJOSE_HDR_ENC_A256CBC_HS512, &err);
 
-    cjose_jwe_recipient_t rec = { .jwk = (const cjose_jwk_t *)key, .unprotected_header = 0 };
+    cjose_jwe_recipient_t rec = { .jwk = key, .unprotected_header = 0 };
 
     jwe = cjose_jwe_encrypt_multi(&rec, 1, hdr, 0, (uint8_t *)"", 1, &err);
     ck_assert_msg(NULL != jwe,
@@ -1264,6 +1268,8 @@ static void _cjose_test_empty_headers(cjose_jwk_t *key)
     free(json);
     cjose_jwe_release(jwe);
 }
+
+#endif
 
 START_TEST(test_cjose_jwe_multiple_recipients)
 {

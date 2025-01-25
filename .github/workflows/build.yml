@@ -6,7 +6,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Dependencies
       run: |
         sudo apt-get update -y
@@ -14,13 +14,12 @@ jobs:
         sudo apt-get install -y libssl-dev libjansson-dev check
     - name: Configure
       run: |
-        ./configure CFLAGS="-g -O0" LDFLAGS="-lrt"
+        touch aclocal.m4 configure Makefile.am Makefile.in 
+        ./configure
     - name: Make
       run: make
     - name: Test
       run: make check
     - name: Valgrind
-      env:
-        CK_FORK: no
       run: |
-        valgrind --leak-check=full --error-exitcode=1 --show-possibly-lost=no --read-inline-info=yes --keep-debuginfo=yes --undef-value-errors=no ./test/check_cjose
+        CK_FORK=no valgrind --leak-check=full --error-exitcode=1 --show-leak-kinds=definite --read-inline-info=yes --keep-debuginfo=yes --undef-value-errors=no ./test/check_cjose

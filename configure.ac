@@ -3,7 +3,7 @@
 #
 
 ### Prerequisites
-AC_INIT([cjose], [0.6.2.3])
+AC_INIT([cjose], [1.0.0])
 AM_INIT_AUTOMAKE([foreign])
 LT_PREREQ([2.2])
 LT_INIT([dlopen])
@@ -39,14 +39,27 @@ AC_ARG_WITH(
     [ AC_MSG_RESULT([no])]
 )
 
-AC_CHECK_LIB([crypto],
-    [CRYPTO_new_ex_data],
+AC_SEARCH_LIBS([CRYPTO_new_ex_data],
+    [crypto],
     [],
     [AC_MSG_ERROR([OpenSSL is missing; it is required for this software])]
 )
 
-##### Check for Fundamental EC #####
-AC_CHECK_HEADERS([openssl/fec.h])
+##### Check for OpenSSL version #####
+proj_temp_cppflags="$CPPFLAGS"
+CPPFLAGS="-I$with_openssl/include"
+AC_CHECK_HEADER([openssl/opensslv.h], [], [AC_MSG_FAILURE([Unable to read opensslslv.h to determine SSL library version])])
+AC_MSG_CHECKING([for OpenSSL >= 3.x])
+AC_COMPILE_IFELSE(
+    [AC_LANG_PROGRAM([[
+        #include <openssl/opensslv.h>
+        #if OPENSSL_VERSION_NUMBER < 0x30000000L
+        #error "Detected OpenSSL version < 3.0.0"
+        #endif
+    ]])],
+    [AC_MSG_RESULT([yes])],
+    [AC_MSG_ERROR([OpenSSL version must be 3.0.0 or greater])])
+CPPFLAGS="$proj_temp_cppflags"
 
 #### Find Jansson
 AC_MSG_CHECKING([for --with-jansson])
@@ -61,8 +74,8 @@ AC_ARG_WITH(
     [ AC_MSG_RESULT([no])]
 )
 
-AC_CHECK_LIB([jansson],
-    [json_object],
+AC_SEARCH_LIBS([json_object],
+    [jansson],
     [],
     [AC_MSG_ERROR([Jansson is missing; it is required for this software])]
 )

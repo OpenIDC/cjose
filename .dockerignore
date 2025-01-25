@@ -1,0 +1,17 @@
+Makefile
+config.log
+config.status
+.libs/**/*
+.libs
+.settings/**/*
+.settings
+src/.deps/**/*
+src/.deps
+src/.libs/**/*
+src/.libs
+src/.dirstamp
+*.log
+*.trs
+*.la
+test/Dockerfile
+.github

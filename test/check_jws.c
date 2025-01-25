@@ -99,10 +99,10 @@ static void _self_sign_self_verify(const char *plain1, const char *alg, cjose_er
     size_t plain1_len = strlen(plain1);
     cjose_jws_t *jws1 = cjose_jws_sign(jwk, hdr, plain1, plain1_len, err);
     ck_assert_msg(NULL != jws1,
-                  "cjose_jws_sign failed: "
+                  "cjose_jws_sign [%s] failed: "
                   "%s, file: %s, function: %s, line: %ld",
-                  err->message, err->file, err->function, err->line);
-    ck_assert(hdr == cjose_jws_get_protected(jws1));
+                  alg, err->message, err->file, err->function, err->line);
+    ck_assert_msg(hdr == cjose_jws_get_protected(jws1), "cjose_jws_get_protected after cjose_jws_sign [%s] failed", alg);
 
     // get the compact serialization of JWS
     const char *compact = NULL;
@@ -120,9 +120,9 @@ static void _self_sign_self_verify(const char *plain1, const char *alg, cjose_er
 
     // verify the deserialized JWS
     ck_assert_msg(cjose_jws_verify(jws2, jwk, err),
-                  "cjose_jws_verify failed: "
+                  "cjose_jws_verify [%s] failed: "
                   "%s, file: %s, function: %s, line: %ld",
-                  err->message, err->file, err->function, err->line);
+                  alg, err->message, err->file, err->function, err->line);
 
     // get the verified plaintext
     uint8_t *plain2 = NULL;
@@ -310,7 +310,7 @@ START_TEST(test_cjose_jws_sign_with_bad_key)
                   "%s, file: %s, function: %s, line: %ld",
                   err.message, err.file, err.function, err.line);
 
-    // attempt signion with each bad key
+    // attempt signing with each bad key
     for (int i = 0; NULL != JWK_BAD[i]; ++i)
     {
         cjose_jwk_t *jwk = cjose_jwk_import(JWK_BAD[i], strlen(JWK_BAD[i]), &err);
@@ -321,8 +321,9 @@ START_TEST(test_cjose_jws_sign_with_bad_key)
 
         jws = cjose_jws_sign(jwk, hdr, plain, plain_len, &err);
         ck_assert_msg(NULL == jws, "cjose_jws_sign created with bad key");
-        ck_assert_msg(err.code == CJOSE_ERR_INVALID_ARG, "%d cjose_jws_sign returned bad err.code (%i:%s)", i, err.code,
-                      err.message);
+        ck_assert_msg(err.code == CJOSE_ERR_INVALID_ARG,
+                      "%d cjose_jws_sign returned bad err.code (%i:%s, file: %s, function: %s, line: %ld)", i, err.code,
+                      err.message, err.file, err.function, err.line);
 
         cjose_jwk_release(jwk);
     }
@@ -499,9 +500,9 @@ START_TEST(test_cjose_jws_import_get_plain_after_verify)
 
     // verify the imported jws
     ck_assert_msg(cjose_jws_verify(jws, jwk, &err),
-                  "cjose_jws_verify failed: "
+                  "cjose_jws_verify [%s] failed: "
                   "%s, file: %s, function: %s, line: %ld",
-                  err.message, err.file, err.function, err.line);
+                  json_string_value(json_object_get(jws->hdr, CJOSE_HDR_ALG)), err.message, err.file, err.function, err.line);
 
     // get plaintext from imported and verified jws
     uint8_t *plaintext = NULL;

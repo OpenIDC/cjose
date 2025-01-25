@@ -11,39 +11,54 @@ jobs:
     strategy:
       matrix:
         include:
+          # NB: gcc crashes on ubuntu22.04 with uraimo/run-on-arch-action
           - arch: armv7
-            distro: ubuntu20.04
+            target: linux-armv4
+            distro: ubuntu22.04
           - arch: aarch64
-            distro: ubuntu20.04
+            target: linux-aarch64 
+            distro: ubuntu22.04
           - arch: ppc64le
-            distro: ubuntu20.04
+            target: linux-ppc64le 
+            distro: ubuntu22.04
           - arch: s390x
-            distro: ubuntu20.04
+            target: linux64-s390x 
+            distro: ubuntu22.04
   
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: uraimo/run-on-arch-action@v2
       name: Build
       id: build
       with:
         arch: ${{ matrix.arch }}
         distro: ${{ matrix.distro }}
+        env: |
+          opensslversion: 3.4.0
+          logfilename: test-suite-${{ matrix.distro }}-${{ matrix.arch }}.log
         install: |
           apt-get update -y
-          apt-get install -y pkg-config make gcc gdb valgrind vim autoconf automake libtool
-          apt-get install -y libssl-dev libjansson-dev check
+          apt-get install -y pkg-config make gdb valgrind vim autoconf automake libtool
+          apt-get install -y libjansson-dev check
+          apt-get install -y libssl-dev
+          #apt-get install -y build-essential checkinstall zlib1g-dev
         setup: |
+          #wget https://github.com/openssl/openssl/releases/download/openssl-${opensslversion}/openssl-${opensslversion}.tar.gz
+          #tar xvf openssl-${opensslversion}.tar.gz
+          #cd openssl-${opensslversion}
+          #./config --prefix=${PWD}/../openssl no-asm ${{ matrix.target }}
+          #make -s install_sw install_ssldirs
           mkdir -p "${PWD}/logs"
         dockerRunArgs: |
-          --volume "${PWD}/logs:/logs"
-        env: |
-          logfilename: test-suite-${{ matrix.distro }}-${{ matrix.arch }}.log
+          --volume "${PWD}/logs:/logs" -e CK_FORK=no
         run: |
-          ./configure CFLAGS="-g -O0" LDFLAGS="-lrt"
-          make check
+          touch aclocal.m4 configure Makefile.am Makefile.in
+          # --with-openssl=${PWD}/openssl
+          LDFLAGS="-L${PWD}/openssl/lib64" ./configure --with-rsapkcs1_5 || cat config.log
+          LD_LIBRARY_PATH=${PWD}/openssl/lib64:${PWD}/openssl/lib make check
+          LD_LIBRARY_PATH=${PWD}/openssl/lib64:${PWD}/openssl/lib:${PWD}/src/.libs valgrind --log-file=test/valgrind.log --leak-check=full --error-exitcode=1 --show-leak-kinds=definite --read-inline-info=yes --keep-debuginfo=yes --undef-value-errors=no ./test/check_cjose
           cat test/*.log >> "/logs/${logfilename}"
           echo "Copied test logs to /logs/${logfilename}"
-          
     - name: Results
       run: |
         cat ${PWD}/logs/*.log

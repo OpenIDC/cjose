@@ -67,7 +67,7 @@ static bool _cmp_uint32(uint8_t **actual, uint32_t expected)
     (*actual) += 4;
     return result;
 }
-static bool _cmp_lendata(uint8_t **actual, uint8_t *expected, size_t len)
+static bool _cmp_lendata(uint8_t **actual, const uint8_t *expected, size_t len)
 {
     bool result = _cmp_uint32(actual, len);
     if (result && NULL != expected)
@@ -96,6 +96,9 @@ START_TEST(test_cjose_concatkdf_otherinfo_noextra)
     ck_assert(_cmp_lendata(&actual, NULL, 0));          // APU
     ck_assert(_cmp_lendata(&actual, NULL, 0));          // APV
     ck_assert(_cmp_uint32(&actual, 256));               // KEYLEN
+
+    cjose_get_dealloc()(otherinfo);
+    cjose_header_release(hdr);
 }
 END_TEST
 
@@ -121,6 +124,9 @@ START_TEST(test_cjose_concatkdf_otherinfo_apuapv)
     ck_assert(_cmp_lendata(&actual, apu, apuLen));
     ck_assert(_cmp_lendata(&actual, apv, apvLen));
     ck_assert(_cmp_uint32(&actual, 32));
+
+    cjose_get_dealloc()(otherinfo);
+    cjose_header_release(hdr);
 }
 END_TEST
 
@@ -137,13 +143,18 @@ START_TEST(test_cjose_concatkdf_derive_simple)
 
     const char *alg = "A256GCM";
     const size_t keylen = 32;
-    cjose_concatkdf_create_otherinfo(alg, keylen, cjose_header_new(&err), &otherinfo, &otherinfoLen, &err);
+    cjose_header_t *hdr = cjose_header_new(&err);
+    cjose_concatkdf_create_otherinfo(alg, keylen, hdr, &otherinfo, &otherinfoLen, &err);
     derived = cjose_concatkdf_derive(keylen, ikm, ikmLen, otherinfo, otherinfoLen, &err);
     ck_assert(NULL != derived);
 
     uint8_t expected[] = { 0xef, 0x1e, 0xe5, 0x58, 0xb7, 0xa8, 0x60, 0x06, 0xe1, 0x6b, 0x26, 0x92, 0x5d, 0x14, 0xcc, 0x1b,
                            0xa3, 0xbb, 0x4e, 0xcf, 0x0d, 0xf0, 0xb0, 0x49, 0xaa, 0xc0, 0x3c, 0xef, 0x87, 0x34, 0xbd, 0x20 };
     ck_assert_bin_eq(derived, expected, keylen);
+
+    cjose_header_release(hdr);
+    cjose_get_dealloc()(derived);
+    cjose_get_dealloc()(otherinfo);
 }
 END_TEST
 
@@ -160,13 +171,19 @@ START_TEST(test_cjose_concatkdf_derive_ikm)
 
     const char *alg = "A256GCM";
     const size_t keylen = 32;
-    cjose_concatkdf_create_otherinfo(alg, keylen, cjose_header_new(&err), &otherinfo, &otherinfoLen, &err);
+
+    cjose_header_t *hdr = cjose_header_new(&err);
+    cjose_concatkdf_create_otherinfo(alg, keylen, hdr, &otherinfo, &otherinfoLen, &err);
     derived = cjose_concatkdf_derive(keylen, ikm, ikmLen, otherinfo, otherinfoLen, &err);
     ck_assert(NULL != derived);
 
     uint8_t expected[] = { 0x34, 0x85, 0xb0, 0x65, 0x0a, 0xa0, 0x95, 0xcc, 0xd1, 0xc4, 0xd2, 0x5f, 0x97, 0x23, 0x50, 0x63,
                            0x53, 0x77, 0xef, 0x05, 0xaa, 0x22, 0x82, 0x3d, 0x6a, 0x23, 0x12, 0x39, 0xd2, 0x33, 0x6e, 0x44 };
     ck_assert_bin_eq(derived, expected, keylen);
+
+    cjose_header_release(hdr);
+    cjose_get_dealloc()(derived);
+    cjose_get_dealloc()(otherinfo);
 }
 END_TEST
 
@@ -192,8 +209,13 @@ START_TEST(test_cjose_concatkdf_derive_moreinfo)
     uint8_t expected[] = { 0x2f, 0xc0, 0x7b, 0x68, 0x8d, 0x15, 0x1e, 0x30, 0x1e, 0xf7, 0xb8, 0x3b, 0xf3, 0x46, 0x7a, 0xf0,
                            0x0e, 0x94, 0xac, 0xfc, 0x18, 0xb5, 0xb4, 0xae, 0x53, 0x81, 0xe0, 0x4a, 0x57, 0x1b, 0x58, 0x65 };
     ck_assert_bin_eq(derived, expected, keylen);
+
+    cjose_header_release(hdr);
+    cjose_get_dealloc()(derived);
+    cjose_get_dealloc()(otherinfo);
 }
 END_TEST
+
 Suite *cjose_concatkdf_suite(void)
 {
     Suite *suite = suite_create("concatkdf");

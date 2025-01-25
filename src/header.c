@@ -6,6 +6,7 @@
  */
 
 #include <stdlib.h>
+#include <stddef.h>
 #include <jansson.h>
 #include "cjose/header.h"
 #include "include/header_int.h"

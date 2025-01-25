@@ -213,7 +213,10 @@ START_TEST(test_cjose_jwk_create_EC_P256_spec)
     cjose_base64url_decode(EC_P256_y, strlen(EC_P256_y), &spec.y, &spec.ylen, &err);
 
     jwk = cjose_jwk_create_EC_spec(&spec, &err);
-    ck_assert(NULL != jwk);
+    ck_assert_msg(NULL != jwk,
+                  "cjose_jwk_create_EC_spec failed : "
+                  "%s, file: %s, function: %s, line: %ld",
+                  err.message, err.file, err.function, err.line);
     ck_assert(1 == jwk->retained);
     ck_assert(CJOSE_JWK_KTY_EC == jwk->kty);
     ck_assert(256 == jwk->keysize);
@@ -264,7 +267,10 @@ START_TEST(test_cjose_jwk_create_EC_P384_spec)
     cjose_base64url_decode(EC_384_y, strlen(EC_384_y), &spec.y, &spec.ylen, &err);
 
     jwk = cjose_jwk_create_EC_spec(&spec, &err);
-    ck_assert(NULL != jwk);
+    ck_assert_msg(NULL != jwk,
+                  "cjose_jwk_create_EC_spec failed : "
+                  "%s, file: %s, function: %s, line: %ld",
+                  err.message, err.file, err.function, err.line);
     ck_assert(1 == jwk->retained);
     ck_assert(CJOSE_JWK_KTY_EC == jwk->kty);
     ck_assert(384 == jwk->keysize);
@@ -315,7 +321,10 @@ START_TEST(test_cjose_jwk_create_EC_P521_spec)
     cjose_base64url_decode(EC_521_y, strlen(EC_521_y), &spec.y, &spec.ylen, &err);
 
     jwk = cjose_jwk_create_EC_spec(&spec, &err);
-    ck_assert(NULL != jwk);
+    ck_assert_msg(NULL != jwk,
+                  "cjose_jwk_create_EC_spec failed : "
+                  "%s, file: %s, function: %s, line: %ld",
+                  err.message, err.file, err.function, err.line);
     ck_assert(1 == jwk->retained);
     ck_assert(CJOSE_JWK_KTY_EC == jwk->kty);
     ck_assert(521 == jwk->keysize);
@@ -743,10 +752,14 @@ START_TEST(test_cjose_jwk_import_json_valid)
 
         // get json representation of "after"
         char *jwk_str = cjose_jwk_to_json(jwk, true, &err);
+        ck_assert_msg(NULL != jwk_str,
+                      "cjose_jwk_to_json for jwk[%d] failed : "
+                      "%s, file: %s, function: %s, line: %ld",
+                      i, err.message, err.file, err.function, err.line);
         json_t *right_json = json_loads(jwk_str, 0, NULL);
-        ck_assert(NULL != right_json);
+        ck_assert_msg(NULL != right_json, "json_loads failed");
 
-        // check that cooresponding attributes match up
+        // check that corresponding attributes match up
         const char *attrs[] = { "kty", "crv", "x", "y", "d", "kid", "e", "n", "p", "q", "dp", "dq", "qi", NULL };
         if (!_match_string_attrs(left_json, right_json, attrs))
         {
@@ -863,6 +876,7 @@ START_TEST(test_cjose_jwk_import_json_invalid)
         ck_assert_msg(NULL == jwk, "expected NULL, received a cjose_jwk_t");
         ck_assert_int_eq(err.code, CJOSE_ERR_INVALID_ARG);
         cjose_jwk_release(jwk);
+        json_decref(left_json);
     }
 }
 END_TEST

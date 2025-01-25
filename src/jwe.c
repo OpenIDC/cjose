@@ -5,8 +5,6 @@
  * Copyright (c) 2014-2016 Cisco Systems, Inc.  All Rights Reserved.
  */
 
-#define OPENSSL_API_COMPAT 0x10000000L
-
 #include <cjose/base64.h>
 #include <cjose/header.h>
 #include <cjose/jwe.h>
@@ -19,6 +17,8 @@
 #include <openssl/evp.h>
 #include <openssl/aes.h>
 #include <openssl/hmac.h>
+#include <openssl/core_names.h>
+#include <openssl/param_build.h>
 
 #include "include/concatkdf_int.h"
 #include "include/header_int.h"
@@ -514,6 +514,64 @@ static bool _cjose_jwe_decrypt_ek_dir(_jwe_int_recipient_t *recipient, cjose_jwe
     return jwe->fns.set_cek(jwe, jwk, false, err);
 }
 
+static int
+_cjose_jwe_aes_key_wrap(const unsigned char *key, const unsigned char *cek, int cek_len, unsigned char **ciphertext, cjose_err *err)
+{
+    EVP_CIPHER_CTX *ctx = NULL;
+    int len = 0;
+    int ciphertext_len = 0;
+
+    ctx = EVP_CIPHER_CTX_new();
+    if (ctx == NULL)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_NO_MEMORY);
+        goto end;
+    }
+
+    if (EVP_EncryptInit_ex2(ctx, EVP_aes_128_wrap(), key, NULL, NULL) != 1)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
+        goto end;
+    }
+
+    if (EVP_EncryptUpdate(ctx, NULL, &len, cek, cek_len) != 1)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
+        goto end;
+    }
+
+    if (_cjose_jwe_malloc(len, false, ciphertext, err) == false)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_NO_MEMORY);
+        return false;
+    }
+
+    if (EVP_EncryptUpdate(ctx, *ciphertext, &len, cek, cek_len) != 1)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
+        goto end;
+    }
+    ciphertext_len = len;
+
+    if (EVP_EncryptFinal_ex(ctx, *ciphertext + len, &len) != 1)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
+        ciphertext_len = 0;
+        goto end;
+    }
+
+    ciphertext_len += len;
+
+end:
+
+    if (ctx)
+    {
+        EVP_CIPHER_CTX_free(ctx);
+    }
+
+    return ciphertext_len;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 static bool _cjose_jwe_encrypt_ek_aes_kw(_jwe_int_recipient_t *recipient, cjose_jwe_t *jwe, const cjose_jwk_t *jwk, cjose_err *err)
 {
@@ -536,30 +594,59 @@ static bool _cjose_jwe_encrypt_ek_aes_kw(_jwe_int_recipient_t *recipient, cjose_
         return false;
     }
 
-    // create the AES encryption key from the shared key
-    AES_KEY akey;
-    if (AES_set_encrypt_key(jwk->keydata, jwk->keysize, &akey) < 0)
-    {
-        CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
-        return false;
-    }
-
-    // allocate buffer for encrypted CEK (=cek_len + 8)
-    if (!_cjose_jwe_malloc(jwe->cek_len + 8, false, &recipient->enc_key.raw, err))
-    {
-        return false;
-    }
-
     // AES wrap the CEK
-    int len = AES_wrap_key(&akey, NULL, recipient->enc_key.raw, jwe->cek, jwe->cek_len);
+    int len = _cjose_jwe_aes_key_wrap(jwk->keydata, jwe->cek, jwe->cek_len, &recipient->enc_key.raw, err);
     if (len <= 0)
     {
-        CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
         return false;
     }
     recipient->enc_key.raw_len = len;
 
     return true;
+}
+
+static int
+_cjose_jwe_aes_key_unwrap(unsigned char *key, unsigned char *cek, unsigned char *ciphertext, int ciphertext_len, cjose_err *err)
+{
+    EVP_CIPHER_CTX *ctx = NULL;
+    int len = 0;
+    int plaintext_len = 0;
+
+    ctx = EVP_CIPHER_CTX_new();
+    if (ctx == NULL)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_NO_MEMORY);
+        goto end;
+    }
+
+    if (EVP_DecryptInit_ex2(ctx, EVP_aes_128_wrap(), key, NULL, NULL) != 1)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
+        goto end;
+    }
+
+    if (EVP_DecryptUpdate(ctx, cek, &len, ciphertext, ciphertext_len) != 1)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
+        goto end;
+    }
+    plaintext_len = len;
+
+    if (EVP_DecryptFinal_ex(ctx, cek + len, &len) != 1)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
+        plaintext_len = 0;
+        goto end;
+    }
+
+    plaintext_len += len;
+
+end:
+
+    if (ctx)
+        EVP_CIPHER_CTX_free(ctx);
+
+    return plaintext_len;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -578,30 +665,61 @@ static bool _cjose_jwe_decrypt_ek_aes_kw(_jwe_int_recipient_t *recipient, cjose_
         return false;
     }
 
-    // create the AES decryption key from the shared key
-    AES_KEY akey;
-    if (AES_set_decrypt_key(jwk->keydata, jwk->keysize, &akey) < 0)
-    {
-        CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
-        return false;
-    }
-
     if (!jwe->fns.set_cek(jwe, NULL, false, err))
     {
         return false;
     }
 
     // AES unwrap the CEK in to jwe->cek
-    int len = AES_unwrap_key(&akey, (const unsigned char *)NULL, jwe->cek, (const unsigned char *)recipient->enc_key.raw,
-                             recipient->enc_key.raw_len);
+    int len = _cjose_jwe_aes_key_unwrap(jwk->keydata, jwe->cek, recipient->enc_key.raw, recipient->enc_key.raw_len, err);
     if (len <= 0)
     {
-        CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
         return false;
     }
     jwe->cek_len = len;
 
     return true;
+}
+
+static size_t _cjose_jwe_rsa_encrypt(
+    EVP_PKEY *key, unsigned char *ciphertext, unsigned char *plaintext, int plaintext_len, int padding, cjose_err *err)
+{
+    EVP_PKEY_CTX *ctx = NULL;
+    size_t ciphertext_len = 0;
+
+    ctx = EVP_PKEY_CTX_new_from_pkey(NULL, key, NULL);
+    if (ctx == NULL)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
+        goto end;
+    }
+
+    if (EVP_PKEY_encrypt_init(ctx) != 1)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
+        goto end;
+    }
+
+    if (EVP_PKEY_CTX_set_rsa_padding(ctx, padding) != 1)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
+        goto end;
+    }
+
+    if (EVP_PKEY_encrypt(ctx, ciphertext, &ciphertext_len, plaintext, plaintext_len) != 1)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
+        goto end;
+    }
+
+end:
+
+    if (ctx)
+    {
+        EVP_PKEY_CTX_free(ctx);
+    }
+
+    return ciphertext_len;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -615,15 +733,6 @@ static bool _cjose_jwe_encrypt_ek_rsa_padding(
         return false;
     }
 
-    // jwk must have the necessary public parts set
-    BIGNUM *rsa_n = NULL, *rsa_e = NULL, *rsa_d = NULL;
-    _cjose_jwk_rsa_get((RSA *)jwk->keydata, &rsa_n, &rsa_e, &rsa_d);
-    if (NULL == rsa_e || NULL == rsa_n)
-    {
-        CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
-        return false;
-    }
-
     // generate random cek
     if (!jwe->fns.set_cek(jwe, NULL, true, err))
     {
@@ -631,7 +740,7 @@ static bool _cjose_jwe_encrypt_ek_rsa_padding(
     }
 
     // the size of the ek will match the size of the RSA key
-    recipient->enc_key.raw_len = RSA_size((RSA *)jwk->keydata);
+    recipient->enc_key.raw_len = EVP_PKEY_size((EVP_PKEY *)jwk->keydata);
 
     // for OAEP padding - the RSA size - 41 must be greater than input
     if (jwe->cek_len >= recipient->enc_key.raw_len - 41)
@@ -657,14 +766,68 @@ static bool _cjose_jwe_encrypt_ek_rsa_padding(
 #endif // HAVE_RSA_PKCS1_PADDING
 
     // encrypt the CEK using RSA v1.5 or OAEP padding
-    if (RSA_public_encrypt(jwe->cek_len, jwe->cek, recipient->enc_key.raw, (RSA *)jwk->keydata, padding)
+    if (_cjose_jwe_rsa_encrypt((EVP_PKEY *)jwk->keydata, recipient->enc_key.raw, jwe->cek, jwe->cek_len, padding, err)
         != recipient->enc_key.raw_len)
     {
-        CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
         return false;
     }
 
     return true;
+}
+
+static size_t _cjose_jwe_rsa_decrypt(
+    EVP_PKEY *key, unsigned char **plaintext, unsigned char *ciphertext, int ciphertext_len, int padding, cjose_err *err)
+{
+    EVP_PKEY_CTX *ctx = NULL;
+    size_t plaintext_len = 0;
+
+    ctx = EVP_PKEY_CTX_new(key, NULL);
+    if (ctx == NULL)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_NO_MEMORY);
+        goto end;
+    }
+
+    if (EVP_PKEY_decrypt_init(ctx) != 1)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
+        goto end;
+    }
+
+    if (EVP_PKEY_CTX_set_rsa_padding(ctx, padding) != 1)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
+        goto end;
+    }
+
+    if (EVP_PKEY_decrypt(ctx, NULL, &plaintext_len, ciphertext, ciphertext_len) != 1)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
+        plaintext_len = 0;
+        goto end;
+    }
+
+    if (_cjose_jwe_malloc(plaintext_len, false, plaintext, err) == false)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_NO_MEMORY);
+        plaintext_len = 0;
+        goto end;
+    }
+
+    if (EVP_PKEY_decrypt(ctx, *plaintext, &plaintext_len, ciphertext, ciphertext_len) != 1)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
+        goto end;
+    }
+
+end:
+
+    if (ctx)
+    {
+        EVP_PKEY_CTX_free(ctx);
+    }
+
+    return plaintext_len;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -684,22 +847,8 @@ static bool _cjose_jwe_decrypt_ek_rsa_padding(
         return false;
     }
 
-    // jwk must have the necessary private parts set
-    BIGNUM *rsa_n = NULL, *rsa_e = NULL, *rsa_d = NULL;
-    _cjose_jwk_rsa_get((RSA *)jwk->keydata, &rsa_n, &rsa_e, &rsa_d);
-    if (NULL == rsa_e || NULL == rsa_n || NULL == rsa_d)
-    {
-        CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
-        return false;
-    }
-
     // we don't know the size of the key to expect, but must be < RSA_size
     _cjose_release_cek(&jwe->cek, jwe->cek_len);
-    size_t buflen = RSA_size((RSA *)jwk->keydata);
-    if (!_cjose_jwe_malloc(buflen, false, &jwe->cek, err))
-    {
-        return false;
-    }
 
 #ifndef HAVE_RSA_PKCS1_PADDING
     // prohibite RSA_PKCS1_PADDING because implementation are often vulnerable
@@ -712,10 +861,10 @@ static bool _cjose_jwe_decrypt_ek_rsa_padding(
 #endif // HAVE_RSA_PKCS1_PADDING
 
     // decrypt the CEK using RSA v1.5 or OAEP padding
-    int len = RSA_private_decrypt(recipient->enc_key.raw_len, recipient->enc_key.raw, jwe->cek, (RSA *)jwk->keydata, padding);
+    int len = _cjose_jwe_rsa_decrypt((EVP_PKEY *)jwk->keydata, &jwe->cek, recipient->enc_key.raw, recipient->enc_key.raw_len,
+                                     padding, err);
     if (-1 == len)
     {
-        CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
         return false;
     }
 
@@ -841,9 +990,10 @@ static bool _cjose_jwe_decrypt_ek_ecdh_es(_jwe_int_recipient_t *recipient, cjose
     size_t otherinfo_len = 0;
     uint8_t *derived = NULL;
     bool result = false;
+    char *epk_json = NULL;
 
     memset(err, 0, sizeof(cjose_err));
-    char *epk_json = cjose_header_get_raw(jwe->hdr, CJOSE_HDR_EPK, err);
+    epk_json = cjose_header_get_raw(jwe->hdr, CJOSE_HDR_EPK, err);
     if (NULL != epk_json)
     {
         epk_jwk = cjose_jwk_import(epk_json, strlen(epk_json), err);
@@ -902,10 +1052,23 @@ static bool _cjose_jwe_decrypt_ek_ecdh_es(_jwe_int_recipient_t *recipient, cjose
 
 cjose_decrypt_ek_ecdh_es_finish:
 
-    cjose_jwk_release(epk_jwk);
-    cjose_get_dealloc()(epk_json);
-    cjose_get_dealloc()(secret);
-    cjose_get_dealloc()(otherinfo);
+    if (otherinfo)
+    {
+        cjose_get_dealloc()(otherinfo);
+    }
+    if (secret)
+    {
+        cjose_get_dealloc()(secret);
+    }
+    if (epk_jwk)
+    {
+        cjose_jwk_release(epk_jwk);
+    }
+    if (epk_json)
+    {
+        // allocated by jansson's json_dumps
+        free(epk_json);
+    }
 
     return result;
 }
@@ -963,14 +1126,6 @@ static bool _cjose_jwe_set_iv_aes_cbc(cjose_jwe_t *jwe, cjose_err *err)
     return true;
 }
 
-#if defined(CJOSE_OPENSSL_11X)
-#define CJOSE_EVP_CTRL_GCM_GET_TAG EVP_CTRL_AEAD_GET_TAG
-#define CJOSE_EVP_CTRL_GCM_SET_TAG EVP_CTRL_AEAD_SET_TAG
-#else
-#define CJOSE_EVP_CTRL_GCM_GET_TAG EVP_CTRL_GCM_GET_TAG
-#define CJOSE_EVP_CTRL_GCM_SET_TAG EVP_CTRL_GCM_SET_TAG
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 static bool _cjose_jwe_encrypt_dat_aes_gcm(cjose_jwe_t *jwe, const uint8_t *plaintext, size_t plaintext_len, cjose_err *err)
 {
@@ -1017,7 +1172,7 @@ static bool _cjose_jwe_encrypt_dat_aes_gcm(cjose_jwe_t *jwe, const uint8_t *plai
     EVP_CIPHER_CTX_init(ctx);
 
     // initialize context for encryption using AES GCM cipher and CEK and IV
-    if (EVP_EncryptInit_ex(ctx, cipher, NULL, jwe->cek, jwe->enc_iv.raw) != 1)
+    if (EVP_EncryptInit_ex2(ctx, cipher, jwe->cek, jwe->enc_iv.raw, NULL) != 1)
     {
         CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
         goto _cjose_jwe_encrypt_dat_fail;
@@ -1072,7 +1227,7 @@ static bool _cjose_jwe_encrypt_dat_aes_gcm(cjose_jwe_t *jwe, const uint8_t *plai
     }
 
     // get the GCM-mode authentication tag
-    if (EVP_CIPHER_CTX_ctrl(ctx, CJOSE_EVP_CTRL_GCM_GET_TAG, jwe->enc_auth_tag.raw_len, jwe->enc_auth_tag.raw) != 1)
+    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, jwe->enc_auth_tag.raw_len, jwe->enc_auth_tag.raw) != 1)
     {
         CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
         goto _cjose_jwe_encrypt_dat_fail;
@@ -1212,7 +1367,7 @@ static bool _cjose_jwe_encrypt_dat_aes_cbc(cjose_jwe_t *jwe, const uint8_t *plai
     EVP_CIPHER_CTX_init(ctx);
 
     // initialize context for decryption using the cipher, the 2nd half of the CEK and the IV
-    if (EVP_EncryptInit_ex(ctx, cipher, NULL, jwe->cek + jwe->cek_len / 2, jwe->enc_iv.raw) != 1)
+    if (EVP_EncryptInit_ex2(ctx, cipher, jwe->cek + jwe->cek_len / 2, jwe->enc_iv.raw, NULL) != 1)
     {
         CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
         goto _cjose_jwe_encrypt_dat_aes_cbc_fail;
@@ -1320,7 +1475,7 @@ static bool _cjose_jwe_decrypt_dat_aes_gcm(cjose_jwe_t *jwe, cjose_err *err)
     EVP_CIPHER_CTX_init(ctx);
 
     // initialize context for decryption using AES GCM cipher and CEK and IV
-    if (EVP_DecryptInit_ex(ctx, cipher, NULL, jwe->cek, jwe->enc_iv.raw) != 1)
+    if (EVP_DecryptInit_ex2(ctx, cipher, jwe->cek, jwe->enc_iv.raw, NULL) != 1)
     {
         CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
         goto _cjose_jwe_decrypt_dat_aes_gcm_fail;
@@ -1333,7 +1488,7 @@ static bool _cjose_jwe_decrypt_dat_aes_gcm(cjose_jwe_t *jwe, cjose_err *err)
     }
 
     // set the expected GCM-mode authentication tag
-    if (EVP_CIPHER_CTX_ctrl(ctx, CJOSE_EVP_CTRL_GCM_SET_TAG, jwe->enc_auth_tag.raw_len, jwe->enc_auth_tag.raw) != 1)
+    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, jwe->enc_auth_tag.raw_len, jwe->enc_auth_tag.raw) != 1)
     {
         CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
         goto _cjose_jwe_decrypt_dat_aes_gcm_fail;
@@ -1442,7 +1597,7 @@ static bool _cjose_jwe_decrypt_dat_aes_cbc(cjose_jwe_t *jwe, cjose_err *err)
     EVP_CIPHER_CTX_init(ctx);
 
     // initialize context for decryption using the cipher, the 2nd half of the CEK and the IV
-    if (EVP_DecryptInit_ex(ctx, cipher, NULL, jwe->cek + jwe->cek_len / 2, jwe->enc_iv.raw) != 1)
+    if (EVP_DecryptInit_ex2(ctx, cipher, jwe->cek + jwe->cek_len / 2, jwe->enc_iv.raw, NULL) != 1)
     {
         CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
         goto _cjose_jwe_decrypt_dat_aes_cbc_fail;
@@ -1494,7 +1649,7 @@ cjose_jwe_t *cjose_jwe_encrypt_iv(const cjose_jwk_t *jwk,
                                   cjose_err *err)
 {
 
-    cjose_jwe_recipient_t rec = { .jwk = jwk, .unprotected_header = NULL };
+    cjose_jwe_recipient_t rec = { .jwk = (cjose_jwk_t *)jwk, .unprotected_header = NULL };
 
     return cjose_jwe_encrypt_multi_iv(&rec, 1, protected_header, NULL, iv, iv_len, plaintext, plaintext_len, err);
 }
@@ -1654,7 +1809,7 @@ void cjose_jwe_release(cjose_jwe_t *jwe)
     _cjose_dealloc_part(&jwe->enc_ct);
     _cjose_dealloc_part(&jwe->enc_auth_tag);
 
-    for (int i = 0; i < jwe->to_count; ++i)
+    for (int i = 0; i < jwe->to_count; i++)
     {
         json_decref(jwe->to[i].unprotected);
         _cjose_dealloc_part(&jwe->to[i].enc_key);

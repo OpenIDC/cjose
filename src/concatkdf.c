@@ -112,18 +112,27 @@ uint8_t *cjose_concatkdf_derive(const size_t keylen,
     uint8_t *derived = NULL;
 
     uint8_t *buffer = NULL;
-    const EVP_MD *dgst = EVP_sha256();
-    EVP_MD_CTX *ctx = EVP_MD_CTX_create();
-    if (NULL == ctx)
+    const EVP_MD *dgst = NULL;
+    EVP_MD_CTX *ctx = NULL;
+
+    dgst = EVP_sha256();
+    if (dgst == NULL)
     {
-        CJOSE_ERROR(err, CJOSE_ERR_NO_MEMORY);
+        CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
+        goto concatkdf_derive_finish;
+    }
+
+    ctx = EVP_MD_CTX_create();
+    if (ctx == NULL)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
         goto concatkdf_derive_finish;
     }
 
     const size_t hashlen = EVP_MD_size(dgst);
     const size_t N = (keylen + hashlen - 1) / hashlen;
     buffer = cjose_get_alloc()(keylen);
-    if (NULL == buffer)
+    if (buffer == NULL)
     {
         CJOSE_ERROR(err, CJOSE_ERR_NO_MEMORY);
         goto concatkdf_derive_finish;
@@ -156,8 +165,15 @@ uint8_t *cjose_concatkdf_derive(const size_t keylen,
     buffer = NULL;
 
 concatkdf_derive_finish:
-    EVP_MD_CTX_destroy(ctx);
-    cjose_get_dealloc()(buffer);
+
+    if (ctx)
+    {
+        EVP_MD_CTX_destroy(ctx);
+    }
+    if (buffer)
+    {
+        cjose_get_dealloc()(buffer);
+    }
 
     return derived;
 }

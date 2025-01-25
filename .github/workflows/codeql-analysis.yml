@@ -32,7 +32,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Install packages
       run: |
@@ -63,7 +63,8 @@ jobs:
     #    uses a compiled language
 
     - run: |
-       ./configure CFLAGS="-g -O0" LDFLAGS="-lrt"
+       touch aclocal.m4 configure Makefile.am Makefile.in 
+       ./configure --with-rsapkcs1_5
        make check
 
     - name: Perform CodeQL Analysis
