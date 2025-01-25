@@ -14,16 +14,16 @@ jobs:
           # NB: gcc crashes on ubuntu22.04 with uraimo/run-on-arch-action
           - arch: armv7
             target: linux-armv4
-            distro: ubuntu22.04
+            distro: bookworm
           - arch: aarch64
             target: linux-aarch64 
-            distro: ubuntu22.04
+            distro: bookworm
           - arch: ppc64le
             target: linux-ppc64le 
-            distro: ubuntu22.04
+            distro: bookworm
           - arch: s390x
             target: linux64-s390x 
-            distro: ubuntu22.04
+            distro: bookworm
   
     steps:
     - uses: actions/checkout@v4
