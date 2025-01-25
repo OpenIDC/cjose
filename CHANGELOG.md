@@ -1,5 +1,6 @@
 # Release Notes #
 
+* fix rsa_q = NULL initialization in _RSA_private_fields
 * fix memory allocation check (typo) in jwk.c (https://github.com/OpenIDC/cjose/security/code-scanning/2)
 
 <a name="v0.6.2.3"></a>
