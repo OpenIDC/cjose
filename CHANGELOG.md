@@ -1,5 +1,6 @@
 # Release Notes #
 
+* fix memory leak in ECDH-ES JWE encryption/decryption
 * fix rsa_q = NULL initialization in _RSA_private_fields
 * fix memory allocation check (typo) in jwk.c (https://github.com/OpenIDC/cjose/security/code-scanning/2)
 
