@@ -1,6 +1,9 @@
 /*!
  * Copyrights
  *
+ * Portions created or assigned to ZmartZone Holding B.V. are
+ * Copyright (c) 2018-2025 ZmartZone Holding B.V.  All Rights Reserved.
+ *
  * Portions created or assigned to Cisco Systems, Inc. are
  * Copyright (c) 2014-2016 Cisco Systems, Inc.  All Rights Reserved.
  */
@@ -325,15 +328,11 @@ char *cjose_jwk_to_json(const cjose_jwk_t *jwk, bool priv, cjose_err *err)
     cjose_get_dealloc()(str_jwk);
 
 to_json_cleanup:
+
     if (json)
     {
         json_decref(json);
         json = NULL;
-    }
-    if (field)
-    {
-        json_decref(field);
-        field = NULL;
     }
 
     return result;
@@ -713,10 +712,6 @@ static bool _EC_public_fields(const cjose_jwk_t *jwk, json_t *json, cjose_err *e
     result = true;
 
 _ec_to_string_cleanup:
-    if (field)
-    {
-        json_decref(field);
-    }
     if (bnX)
     {
         BN_free(bnX);
@@ -827,11 +822,6 @@ cjose_jwk_t *cjose_jwk_create_EC_random(cjose_jwk_ec_curve crv, cjose_err *err)
 
 create_EC_failed:
 
-    if (jwk)
-    {
-        cjose_get_dealloc()(jwk);
-        jwk = NULL;
-    }
     if (pkey)
     {
         EVP_PKEY_free(pkey);
@@ -1010,11 +1000,6 @@ cjose_jwk_t *cjose_jwk_create_EC_spec(const cjose_jwk_ec_keyspec *spec, cjose_er
 
 create_EC_failed:
 
-    if (jwk)
-    {
-        cjose_get_dealloc()(jwk);
-        jwk = NULL;
-    }
     if (pkey)
     {
         EVP_PKEY_free(pkey);
@@ -1949,12 +1934,9 @@ cjose_jwk_t *cjose_jwk_derive_ecdh_ephemeral_key(
 // fail path
 _cjose_jwk_derive_shared_secret_fail:
 
-    if (NULL != jwk_ephemeral_key)
-    {
-        cjose_jwk_release(jwk_ephemeral_key);
-    }
     cjose_get_dealloc()(secret);
     cjose_get_dealloc()(ephemeral_key);
+
     return NULL;
 }
 

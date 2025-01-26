@@ -1325,6 +1325,7 @@ START_TEST(test_cjose_jwk_hkdf)
 
     size_t ephemeral_key_len = 32;
     uint8_t *ephemeral_key = (uint8_t *)malloc(ephemeral_key_len);
+    memset(ephemeral_key, 0, ephemeral_key_len);
     bool ok
         = cjose_jwk_hkdf(EVP_sha256(), (uint8_t *)"", 0, (uint8_t *)"", 0, ikm, ikm_len, ephemeral_key, ephemeral_key_len, &err);
     ck_assert_msg(ok, "Failed to compute HKDF");

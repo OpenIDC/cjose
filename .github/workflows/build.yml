@@ -49,6 +49,10 @@ jobs:
       run: |
         make check || { cat test/test-suite.log && (exit -1) }
 
+    - name: Distcheck
+      run: |
+        make distcheck DESTDIR=/tmp/cjose
+
     - name: Valgrind
       env:
         LD_LIBRARY_PATH: /usr/local/lib64:/usr/local/lib:${PWD}/src/.libs

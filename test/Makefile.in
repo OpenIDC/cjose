@@ -563,9 +563,10 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 @HAVE_CHECK_TRUE@AM_CPPFLAGS = -std=gnu99 --pedantic -Wall -g -O2 \
-@HAVE_CHECK_TRUE@	-I$(top_builddir)/include @CHECK_CFLAGS@
-@HAVE_CHECK_TRUE@check_cjose_CFLAGS = @CHECK_CFLAGS@ -I$(top_builddir)/include \
-@HAVE_CHECK_TRUE@                     -I$(top_builddir)/src -I$(top_srcdir)/src \
+@HAVE_CHECK_TRUE@	-I$(top_srcdir)/include @CHECK_CFLAGS@
+@HAVE_CHECK_TRUE@check_cjose_CFLAGS = @CHECK_CFLAGS@ \
+@HAVE_CHECK_TRUE@                     -I$(top_srcdir)/include \
+@HAVE_CHECK_TRUE@                     -I$(top_srcdir)/src \
 @HAVE_CHECK_TRUE@                     @OPENSSL_CFLAGS@ @JANSSON_CFLAGS@
 
 @HAVE_CHECK_TRUE@check_cjose_LDADD = $(top_builddir)/src/libcjose.la @CHECK_LIBS@ @OPENSSL_LIBS@ @JANSSON_LIBS@
@@ -580,6 +581,9 @@ top_srcdir = @top_srcdir@
 @HAVE_CHECK_TRUE@                      check_header.c \
 @HAVE_CHECK_TRUE@                      check_cjose.h 
 
+DOCKER_TAG = cjose/test
+DOCKER_RUN_ARGS := -e CK_FORK=no -e LD_LIBRARY_PATH=/usr/local/lib:/root/cjose/src/.libs
+VALGRIND_FLAGS := -s --leak-check=full --show-leak-kinds=definite --read-inline-info=yes --keep-debuginfo=yes 
 all: all-am
 
 .SUFFIXES:
@@ -1222,6 +1226,18 @@ uninstall-am:
 
 .PRECIOUS: Makefile
 
+
+docker-build:
+	docker build --progress plain -f test/Dockerfile . -t $(DOCKER_TAG)
+
+docker-check: docker-build
+	docker run -it $(DOCKER_RUN_ARGS) --rm $(DOCKER_TAG):latest bash -c "make check || cat test/test-suite.log"
+
+docker-valgrind: docker-build
+	docker run -it $(DOCKER_RUN_ARGS) --rm $(DOCKER_TAG):latest /usr/bin/valgrind ${VALGRIND_FLAGS} test/.libs/check_cjose
+
+docker-gdb: docker-build
+	docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined -it --rm $(DOCKER_RUN_ARGS) $(DOCKER_TAG):latest /usr/bin/gdb test/.libs/check_cjose
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

@@ -5,43 +5,35 @@
 
 # cjose #
 
-*This is a maintance fork of the [cisco/cjose](https://github.com/cisco/cjose) project.*
+*This is a maintained fork of the abandoned [cisco/cjose](https://github.com/cisco/cjose) project.*
 
 Implementation of JOSE for C/C++
 
 ## Prerequisites ##
 
-*MAC OS X* All of the prerequisites can be installed via [brew](http://brew.sh/).
-
-### Build Tools ###
-
 * pkg-config (>= 0.20)
 * GNU Make >= 3.81
-* LLVM >= 5.1 or GCC >= 4.5
+* GCC >= 4.5
 * Autoconf (>= 2.69)
 * Automake (>= 1.14)
 * libtool (>= 2.4)
-* Check (>= 0.9.4) - unit testing (e.g. check-devel)
+* Check (>= 0.9.4) - unit testing
 * Doxygen (>= 1.8) - documentation
 * clang-format (= 3.9.0)
-
-### Libraries ###
-
-* OpenSSL >= 1.0.1h (or its API equivalent)
+* OpenSSL >= 3.0.0 (or its API equivalent)
 * Jansson >= 2.3
 
 ## Getting Started ##
 
 As with most autoconf/automake projects:
 
-    git clone https://github.com/cisco/cjose.git
+    git clone https://github.com/OpenIDC/cjose.git
     cd cjose
     ./configure && make
 
 ### Common Options ###
 
-    --with-openssl: Specify the location where OpenSSL/CiscoSSL is installed
-    --with-jansson: Specify the location where Jansson is installed
+    PKG_CONFIG_PATH environment variable: specify the search path where OpenSSL and Jansson can be found by pkg-config
     --disable-shared: Only build static library
 
 ### Debug Mode ###
@@ -50,12 +42,11 @@ To compile in debug mode (minimal optimization, active asserts, etc), specify th
 
     ./configure CFLAGS="-g -O0 -DDEBUG"
 
-
 ## Tests ##
 
 To execute the unit tests:
 
-    make test
+    make check
 
 If successful, the list of checks will be displayed on the console.  Otherwise, the file "test/test-suite.log" will list the specific test(s) that failed.
 
@@ -82,18 +73,6 @@ via brew.  A solution is to explicitly include the /usr/local/include directory
 in the cflags:
 
     ./configure CFLAGS="-I/usr/local/include"
-
-### Make fails due to many OpenSSL functions being "deprecated" or missing.
-
-This has been seen on Mac OSX 10.9 when openssl 1.0.1h or newer has been installed via brew.  A solution is to explicitly include the openssl directory in the configure command:
-
-    ./configure --with-openssl=/usr/local/opt/openssl
-
-### Make fails due to json_* functions missing.
-
-This has been seen on Mac OSX 10.9 when Jansson has been installed via brew.  A solution is to explicitly include the jansson directory in the configure command:
-
-    ./configure --with-jansson=/usr/local/opt/jansson
 
 ## Contributing ##
 

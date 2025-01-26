@@ -154,6 +154,7 @@ static void _self_encrypt_self_decrypt_with_key(const char *alg, const char *enc
 
     // set header for JWE
     cjose_header_t *hdr = cjose_header_new(&err);
+    ck_assert(NULL != hdr);
     ck_assert_msg(cjose_header_set(hdr, CJOSE_HDR_ALG, alg, &err),
                   "cjose_header_set failed: "
                   "%s, file: %s, function: %s, line: %ld",
@@ -289,6 +290,7 @@ _self_encrypt_self_decrypt_with_key_iv(const char *alg, const char *enc, const c
 
     // set header for JWE
     cjose_header_t *hdr = cjose_header_new(&err);
+    ck_assert(NULL != hdr);
     ck_assert_msg(cjose_header_set(hdr, CJOSE_HDR_ALG, alg, &err),
                   "cjose_header_set failed: "
                   "%s, file: %s, function: %s, line: %ld",
@@ -474,6 +476,7 @@ START_TEST(test_cjose_jwe_encrypt_with_bad_header)
 
     // set header for JWE with bad alg
     hdr = cjose_header_new(&err);
+    ck_assert(NULL != hdr);
     ck_assert_msg(cjose_header_set(hdr, CJOSE_HDR_ALG, "Cayley-Purser", &err),
                   "cjose_header_set failed: "
                   "%s, file: %s, function: %s, line: %ld",
@@ -535,6 +538,7 @@ START_TEST(test_cjose_jwe_encrypt_with_bad_key)
 
     // set header for JWE
     hdr = cjose_header_new(&err);
+    ck_assert(NULL != hdr);
     ck_assert_msg(cjose_header_set(hdr, CJOSE_HDR_ALG, CJOSE_HDR_ALG_RSA_OAEP, &err),
                   "cjose_header_set failed: "
                   "%s, file: %s, function: %s, line: %ld",
@@ -594,6 +598,7 @@ START_TEST(test_cjose_jwe_encrypt_with_bad_content)
 
     // set header for JWE
     hdr = cjose_header_new(&err);
+    ck_assert(NULL != hdr);
     ck_assert_msg(cjose_header_set(hdr, CJOSE_HDR_ALG, CJOSE_HDR_ALG_RSA_OAEP, &err),
                   "cjose_header_set failed: "
                   "%s, file: %s, function: %s, line: %ld",
@@ -1230,6 +1235,8 @@ static void _cjose_test_empty_headers(cjose_jwk_t *key)
     // be able to read it back.
 
     hdr = cjose_header_new(&err);
+    ck_assert(NULL != hdr);
+
     cjose_header_set(hdr, CJOSE_HDR_ALG, CJOSE_HDR_ALG_RSA_OAEP, &err);
     cjose_header_set(hdr, CJOSE_HDR_ENC, CJOSE_HDR_ENC_A256CBC_HS512, &err);
 

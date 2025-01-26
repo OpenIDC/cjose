@@ -7,7 +7,7 @@ name: Coverity
 
 on:
   push:
-    branches: [ version-1.0.x ]
+    branches: [ version-1.0.x, devel ]
   pull_request:
     types: [opened, synchronize, reopened]
 

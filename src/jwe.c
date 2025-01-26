@@ -1,6 +1,9 @@
 /*!
  * Copyrights
  *
+ * Portions created or assigned to ZmartZone Holding B.V. are
+ * Copyright (c) 2018-2025 ZmartZone Holding B.V.  All Rights Reserved.
+ *
  * Portions created or assigned to Cisco Systems, Inc. are
  * Copyright (c) 2014-2016 Cisco Systems, Inc.  All Rights Reserved.
  */
@@ -1408,6 +1411,7 @@ static bool _cjose_jwe_encrypt_dat_aes_cbc(cjose_jwe_t *jwe, const uint8_t *plai
     // calculate Authentication Tag
     unsigned int tag_len = 0;
     uint8_t tag[EVP_MAX_MD_SIZE];
+    memset(tag, 0, EVP_MAX_MD_SIZE);
     if (_cjose_jwe_calc_auth_tag(enc, jwe, (unsigned char *)&tag, &tag_len, err) == false)
     {
         return false;
@@ -1552,6 +1556,7 @@ static bool _cjose_jwe_decrypt_dat_aes_cbc(cjose_jwe_t *jwe, cjose_err *err)
     // calculate Authentication Tag
     unsigned int tag_len = 0;
     uint8_t tag[EVP_MAX_MD_SIZE];
+    memset(tag, 0, EVP_MAX_MD_SIZE);
     if (_cjose_jwe_calc_auth_tag(enc, jwe, (unsigned char *)&tag, &tag_len, err) == false)
     {
         return false;
