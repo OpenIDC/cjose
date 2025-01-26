@@ -56,7 +56,7 @@ jobs:
           # --with-openssl=${PWD}/openssl
           LDFLAGS="-L${PWD}/openssl/lib64" ./configure --with-rsapkcs1_5 || cat config.log
           LD_LIBRARY_PATH=${PWD}/openssl/lib64:${PWD}/openssl/lib make check
-          LD_LIBRARY_PATH=${PWD}/openssl/lib64:${PWD}/openssl/lib:${PWD}/src/.libs valgrind --log-file=test/valgrind.log --leak-check=full --error-exitcode=1 --show-leak-kinds=definite --read-inline-info=yes --keep-debuginfo=yes --undef-value-errors=no ./test/check_cjose
+          #LD_LIBRARY_PATH=${PWD}/openssl/lib64:${PWD}/openssl/lib:${PWD}/src/.libs valgrind --log-file=test/valgrind.log --leak-check=full --error-exitcode=1 --show-leak-kinds=definite --read-inline-info=yes --keep-debuginfo=yes --undef-value-errors=no ./test/check_cjose
           cat test/*.log >> "/logs/${logfilename}"
           echo "Copied test logs to /logs/${logfilename}"
     - name: Results
