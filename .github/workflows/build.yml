@@ -4,22 +4,55 @@ on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        #os: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04]
+        os: [ubuntu-latest]
+        version: [3.0.15, 3.1.7, 3.2.3, 3.3.2, 3.4.0]
+        
+    name: ${{ matrix.os }} openssl-${{ matrix.version }}
+    runs-on: ${{ matrix.os }}
+
     steps:
     - uses: actions/checkout@v4
     - name: Dependencies
       run: |
         sudo apt-get update -y
         sudo apt-get install -y pkg-config make gcc gdb valgrind vim autoconf automake libtool
-        sudo apt-get install -y libssl-dev libjansson-dev check
+        sudo apt-get install -y libjansson-dev check
+        sudo apt-get install -y build-essential checkinstall zlib1g-dev
+
+    - name: OpenSSL ${{ matrix.version }}
+      run: |
+        wget --progress=bar:force:noscroll https://github.com/openssl/openssl/releases/download/openssl-${{ matrix.version }}/openssl-${{ matrix.version }}.tar.gz
+        tar zxf openssl-${{ matrix.version }}.tar.gz
+        cd openssl-${{ matrix.version }}
+        ./config --prefix=/usr/local
+        sudo make -s install_sw install_ssldirs
+        
     - name: Configure
+      env:
+        PKG_CONFIG_PATH: /usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig
       run: |
         touch aclocal.m4 configure Makefile.am Makefile.in 
-        ./configure
+        ./configure --with-rsapkcs1_5
+
     - name: Make
-      run: make
-    - name: Test
-      run: make check
-    - name: Valgrind
       run: |
-        CK_FORK=no valgrind --leak-check=full --error-exitcode=1 --show-leak-kinds=definite --read-inline-info=yes --keep-debuginfo=yes --undef-value-errors=no ./test/check_cjose
+        make && cd test && make check_cjose
+
+    - name: Check
+      env:
+        LD_LIBRARY_PATH: /usr/local/lib64:/usr/local/lib
+      run: |
+        make check || { cat test/test-suite.log && (exit -1) }
+
+    - name: Valgrind
+      env:
+        LD_LIBRARY_PATH: /usr/local/lib64:/usr/local/lib:${PWD}/src/.libs
+        CK_FORK: no
+        VALGRIND_FLAGS: --leak-check=full --error-exitcode=1 --show-leak-kinds=definite --read-inline-info=yes --keep-debuginfo=yes --undef-value-errors=no    
+      run: |
+        valgrind ${VALGRIND_FLAGS} ./test/check_cjose

@@ -5,26 +5,28 @@ on: [push, pull_request]
 jobs:
   build:
 
+    # TODO: gcc crashes on ubuntu-latest/ubuntu24.04 with uraimo/run-on-arch-action
     runs-on: ubuntu-22.04
     name: Build on ${{ matrix.arch }}
 
     strategy:
+      fail-fast: false
       matrix:
         include:
-          # NB: gcc crashes on ubuntu22.04 with uraimo/run-on-arch-action
+          - arch: armv6
+            distro: bookworm
           - arch: armv7
-            target: linux-armv4
             distro: bookworm
           - arch: aarch64
-            target: linux-aarch64 
+            distro: bookworm
+          - arch: riscv64
+            # ubuntu22.04 / OpenSSL 3.0.2 seems to have an issue with EVP_PKEY_fromdata(EVP_PKEY_KEYPAIR)
+            distro: ubuntu_latest
+          - arch: s390x
             distro: bookworm
           - arch: ppc64le
-            target: linux-ppc64le 
             distro: bookworm
-          - arch: s390x
-            target: linux64-s390x 
-            distro: bookworm
-  
+
     steps:
     - uses: actions/checkout@v4
     - uses: uraimo/run-on-arch-action@v2
@@ -34,29 +36,20 @@ jobs:
         arch: ${{ matrix.arch }}
         distro: ${{ matrix.distro }}
         env: |
-          opensslversion: 3.4.0
+          CK_MAX_MSG_SIZE: 40960
           logfilename: test-suite-${{ matrix.distro }}-${{ matrix.arch }}.log
         install: |
           apt-get update -y
-          apt-get install -y pkg-config make gdb valgrind vim autoconf automake libtool
-          apt-get install -y libjansson-dev check
-          apt-get install -y libssl-dev
-          #apt-get install -y build-essential checkinstall zlib1g-dev
+          apt-get install -y pkg-config make gdb autoconf automake libtool
+          apt-get install -y libssl-dev libjansson-dev check
         setup: |
-          #wget https://github.com/openssl/openssl/releases/download/openssl-${opensslversion}/openssl-${opensslversion}.tar.gz
-          #tar xvf openssl-${opensslversion}.tar.gz
-          #cd openssl-${opensslversion}
-          #./config --prefix=${PWD}/../openssl no-asm ${{ matrix.target }}
-          #make -s install_sw install_ssldirs
           mkdir -p "${PWD}/logs"
         dockerRunArgs: |
-          --volume "${PWD}/logs:/logs" -e CK_FORK=no
+          --volume "${PWD}/logs:/logs"
         run: |
           touch aclocal.m4 configure Makefile.am Makefile.in
-          # --with-openssl=${PWD}/openssl
-          LDFLAGS="-L${PWD}/openssl/lib64" ./configure --with-rsapkcs1_5 || cat config.log
-          LD_LIBRARY_PATH=${PWD}/openssl/lib64:${PWD}/openssl/lib make check
-          #LD_LIBRARY_PATH=${PWD}/openssl/lib64:${PWD}/openssl/lib:${PWD}/src/.libs valgrind --log-file=test/valgrind.log --leak-check=full --error-exitcode=1 --show-leak-kinds=definite --read-inline-info=yes --keep-debuginfo=yes --undef-value-errors=no ./test/check_cjose
+          ./configure --with-rsapkcs1_5 || cat config.log
+          make check || { cat test/test-suite.log && (exit -1) }
           cat test/*.log >> "/logs/${logfilename}"
           echo "Copied test logs to /logs/${logfilename}"
     - name: Results

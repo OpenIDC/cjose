@@ -1,4 +1,4 @@
-SUBDIRS = . include src test doc platform
+SUBDIRS = . include src test doc
 EXTRA_DIST = CHANGELOG.md README.md LICENSE
 
 ACLOCAL_AMFLAGS = -I m4

@@ -1,6 +1,7 @@
 [![Build Status](https://github.com/OpenIDC/cjose/actions/workflows/build.yml/badge.svg)](https://github.com/OpenIDC/cjose/actions/workflows/build.yml)
 [![Architectures Status](https://github.com/OpenIDC/cjose/actions/workflows/archs.yml/badge.svg)](https://github.com/OpenIDC/cjose/actions/workflows/archs.yml)
 [![CodeQL Analysis](https://github.com/OpenIDC/cjose/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/OpenIDC/cjose/actions/workflows/codeql-analysis.yml)
+[![Coverity Scan Build Status](https://scan.coverity.com/projects/31314/badge.svg)](https://scan.coverity.com/projects/openidc-cjose)
 
 # cjose #
 

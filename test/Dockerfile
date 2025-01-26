@@ -27,8 +27,8 @@ ARG CONFIGURE_ARGS=--with-rsapkcs1_5
 
 #RUN autoreconf --force --install && rm -rf autom4te.cache/
 RUN touch aclocal.m4 configure Makefile.am Makefile.in
-RUN ./configure \
-	--with-openssl=/usr/local \
+RUN PKG_CONFIG_PATH=/usr/local/lib/pkgconfig \
+	./configure \
 	${CONFIGURE_ARGS}
 RUN make all
 RUN cd test && make check_cjose

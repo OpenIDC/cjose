@@ -803,10 +803,15 @@ bool cjose_jws_export(cjose_jws_t *jws, const char **compact, cjose_err *err)
 ////////////////////////////////////////////////////////////////////////////////
 static bool _cjose_jws_strcpy(char **dst, const char *src, int len, cjose_err *err)
 {
-    *dst = (char *)cjose_get_alloc()(len + 1);
     if (NULL == dst)
     {
         CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
+        return false;
+    }
+    *dst = (char *)cjose_get_alloc()(len + 1);
+    if (NULL == *dst)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_NO_MEMORY);
         return false;
     }
 
