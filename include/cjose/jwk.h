@@ -36,7 +36,9 @@ typedef enum
     /** Elliptic Curve Public (or Private) Key */
     CJOSE_JWK_KTY_EC,
     /** Octet String (Symmetric) Key */
-    CJOSE_JWK_KTY_OCT
+    CJOSE_JWK_KTY_OCT,
+    /** Octet Key Public (or Private) Key */
+    CJOSE_JWK_KTY_OKP
 } cjose_jwk_kty_t;
 
 /**
@@ -316,6 +318,76 @@ cjose_jwk_t *cjose_jwk_create_oct_random(size_t size, cjose_err *err);
  * \returns The symmetric JWK object for the given raw key data.
  */
 cjose_jwk_t *cjose_jwk_create_oct_spec(const uint8_t *data, size_t len, cjose_err *err);
+
+/** Enumeration of supported Elliptic-Curve types for Octet (Asymmetric) Key JWK objects */
+typedef enum
+{
+    /** NIST Ed25519 Curve (Ed25519) */
+    CJOSE_JWK_OKP_ED25519 = NID_ED25519,
+    /** NIST Ed448 Curve (Ed448) */
+    CJOSE_JWK_OKP_ED448 = NID_ED448,
+    /** NIST X25519 Curve (X25519) */
+    CJOSE_JWK_OKP_X25519 = NID_X25519,
+    /** NIST X448 Curve (X448) */
+    CJOSE_JWK_OKP_X448 = NID_X448,
+    /** Invalid Curve */
+    CJOSE_JWK_OKP_INVALID = -1
+} cjose_jwk_okp_curve;
+
+/** Key specification for Octet (Asymmetric) Key JWK objects. */
+typedef struct
+{
+    /** The elliptic curve */
+    cjose_jwk_okp_curve crv;
+    /** The private key */
+    uint8_t *d;
+    /** Length of <tt>d</tt> */
+    size_t dlen;
+    /** The public key's X coordinate */
+    uint8_t *x;
+    /** Length of <tt>x</tt> */
+    size_t xlen;
+} cjose_jwk_okp_keyspec;
+
+/**
+ * Creates a new Octet (Asymmetric) Key JWK, using a secure random number generator.
+ *
+ * \b NOTE: The caller MUST call cjose_jwk_release() to release the JWK's
+ * resources.
+ *
+ * \param crv The EC Curve to generate against
+ * \param err [out] An optional error object which can be used to get additional
+ *        information in the event of an error.
+ * \returns The generated Octet (Asymmetric) Key JWK object
+ */
+cjose_jwk_t *cjose_jwk_create_OKP_random(cjose_jwk_okp_curve crv, cjose_err *err);
+
+/**
+ * Creates a new Octet (Asymmetric) Key JWK, using the given the raw values for
+ * the private and/or public keys.
+ *
+ * \b NOTE: The caller MUST call cjose_jwk_release() to release the JWK's
+ * resources.
+ *
+ * \b NOTE: This function makes a copy of all provided data; the caller
+ * MUST free the memory for <tt>spec</tt> after calling this function.
+ *
+ * \param spec The specified Octet (Asymmetric) Key properties
+ * \param err [out] An optional error object which can be used to get additional
+ *        information in the event of an error.
+ * \returns The generated Octet (Asymmetric) Key JWK object
+ */
+cjose_jwk_t *cjose_jwk_create_OKP_spec(const cjose_jwk_okp_keyspec *spec, cjose_err *err);
+
+/**
+ * Obtains the curve for the given (OKP) JWK.
+ *
+ * \param jwk [in] The OKP JWK to inspect
+ * \param err [out] An optional error object which can be used to get additional
+ *        information in the event of an error.
+ * \returns The curve type
+ */
+const cjose_jwk_okp_curve cjose_jwk_OKP_get_curve(const cjose_jwk_t *jwk, cjose_err *err);
 
 /**
  * Instantiates a new JWK given a JSON document representation conforming

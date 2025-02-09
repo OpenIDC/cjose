@@ -36,7 +36,7 @@ jobs:
       env:
         PKG_CONFIG_PATH: /usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig
       run: |
-        touch aclocal.m4 configure Makefile.am Makefile.in 
+        touch aclocal.m4 configure Makefile.am Makefile.in
         ./configure --with-rsapkcs1_5
 
     - name: Make
@@ -55,7 +55,7 @@ jobs:
 
     - name: Valgrind
       env:
-        LD_LIBRARY_PATH: /usr/local/lib64:/usr/local/lib:${PWD}/src/.libs
+        LD_LIBRARY_PATH: /usr/local/lib64:/usr/local/lib:${PWD}/.libs
         CK_FORK: no
         VALGRIND_FLAGS: --leak-check=full --error-exitcode=1 --show-leak-kinds=definite --read-inline-info=yes --keep-debuginfo=yes --undef-value-errors=no    
       run: |

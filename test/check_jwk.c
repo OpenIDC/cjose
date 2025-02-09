@@ -58,6 +58,7 @@ START_TEST(test_cjose_jwk_name_for_kty)
     ck_assert_str_eq("RSA", cjose_jwk_name_for_kty(CJOSE_JWK_KTY_RSA, &err));
     ck_assert_str_eq("EC", cjose_jwk_name_for_kty(CJOSE_JWK_KTY_EC, &err));
     ck_assert_str_eq("oct", cjose_jwk_name_for_kty(CJOSE_JWK_KTY_OCT, &err));
+    ck_assert_str_eq("OKP", cjose_jwk_name_for_kty(CJOSE_JWK_KTY_OKP, &err));
     ck_assert(NULL == cjose_jwk_name_for_kty(0, &err));
     ck_assert(NULL == cjose_jwk_name_for_kty(99, &err));
 }
@@ -411,6 +412,95 @@ START_TEST(test_cjose_jwk_create_oct_random_inval)
 }
 END_TEST
 
+static void _test_cjose_jwk_create_OKP_spec(cjose_jwk_okp_curve crv, int keysize, const char *d, const char *x)
+{
+    cjose_err err;
+    cjose_jwk_t *jwk = NULL;
+    cjose_jwk_okp_keyspec spec;
+
+    memset(&spec, 0, sizeof(cjose_jwk_okp_keyspec));
+    spec.crv = crv;
+    cjose_base64url_decode(d, strlen(d), &spec.d, &spec.dlen, &err);
+    cjose_base64url_decode(x, strlen(x), &spec.x, &spec.xlen, &err);
+
+    jwk = cjose_jwk_create_OKP_spec(&spec, &err);
+    ck_assert_msg(NULL != jwk,
+                  "cjose_jwk_create_OKP_spec failed : "
+                  "%s, file: %s, function: %s, line: %ld",
+                  err.message, err.file, err.function, err.line);
+    ck_assert(1 == jwk->retained);
+    ck_assert(CJOSE_JWK_KTY_OKP == jwk->kty);
+    ck_assert(keysize == jwk->keysize);
+    ck_assert(cjose_jwk_get_keysize(jwk, &err) == jwk->keysize);
+    ck_assert(NULL != jwk->keydata);
+    ck_assert(cjose_jwk_get_keydata(jwk, &err) == jwk->keydata);
+    ck_assert(crv == cjose_jwk_OKP_get_curve(jwk, &err));
+    cjose_get_dealloc()(spec.d);
+    cjose_get_dealloc()(spec.x);
+
+    // cleanup
+    cjose_jwk_release(jwk);
+}
+
+const char *OKP_ED25519_d = "nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A";
+const char *OKP_ED25519_x = "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo";
+START_TEST(test_cjose_jwk_create_OKP_Ed25519_spec)
+{
+    _test_cjose_jwk_create_OKP_spec(CJOSE_JWK_OKP_ED25519, 256, OKP_ED25519_d, OKP_ED25519_x);
+}
+END_TEST
+
+// 57 octets
+const char *OKP_ED448_d = "TN58WZuh-iWvRvIW-O6sXHjLBTL78bG030WeJZ2I2-ArR8exchehxoA5TXr-3Skuw1qagrV6mjdm";
+const char *OKP_ED448_x = "EwEiD2H04mq1APe4WwLHGWFqURrhfJsXvHQdYAyuOUJQ0wV2DTzOswRxeZbpt-JDdZuTS-7XTaUA";
+START_TEST(test_cjose_jwk_create_OKP_Ed448_spec)
+{
+    _test_cjose_jwk_create_OKP_spec(CJOSE_JWK_OKP_ED448, 456, OKP_ED448_d, OKP_ED448_x);
+}
+END_TEST
+
+const char *OKP_X25519_d = "uGJRWNyIiimp0WUj5ptbg2qVK3CxagF3YxFU26rzDn0";
+const char *OKP_X25519_x = "IOXxvLZxIrUBTd8hecRuyYJ1R_GU6KSR-aNv8ApWHiw";
+START_TEST(test_cjose_jwk_create_OKP_X25519_spec)
+{
+    _test_cjose_jwk_create_OKP_spec(CJOSE_JWK_OKP_X25519, 256, OKP_X25519_d, OKP_X25519_x);
+}
+END_TEST
+
+// 56 octets
+const char *OKP_X448_d = "NGzQX14aLsf-miiSLTWW4WmsrbmOY-HKsOeEqjz2vv8kXtVDfbhFP8EYQiNRMuOA8rS1POt5Zok";
+const char *OKP_X448_x = "IMAYVtBqDw96wW7CvvFmpjixDv5MNiHmLSmjjcyf50sLZLuyWZ4OkJRqwqPL_7e06Ny-z7Gsr20";
+START_TEST(test_cjose_jwk_create_OKP_X448_spec)
+{
+    _test_cjose_jwk_create_OKP_spec(CJOSE_JWK_OKP_X448, 448, OKP_X448_d, OKP_X448_x);
+}
+END_TEST
+
+static void _test_cjose_jwk_create_OKP_random(cjose_jwk_okp_curve crv, int keysize)
+{
+    cjose_err err;
+    cjose_jwk_t *jwk = NULL;
+    jwk = cjose_jwk_create_OKP_random(crv, &err);
+    ck_assert(1 == jwk->retained);
+    ck_assert(CJOSE_JWK_KTY_OKP == jwk->kty);
+    ck_assert(keysize == jwk->keysize);
+    ck_assert(cjose_jwk_get_keysize(jwk, &err) == jwk->keysize);
+    ck_assert(NULL != jwk->keydata);
+    ck_assert(cjose_jwk_get_keydata(jwk, &err) == jwk->keydata);
+    ck_assert(crv == cjose_jwk_OKP_get_curve(jwk, &err));
+    // cleanup
+    cjose_jwk_release(jwk);
+}
+
+START_TEST(test_cjose_jwk_create_OKP_random)
+{
+    _test_cjose_jwk_create_OKP_random(CJOSE_JWK_OKP_ED25519, 256);
+    _test_cjose_jwk_create_OKP_random(CJOSE_JWK_OKP_ED448, 456);
+    _test_cjose_jwk_create_OKP_random(CJOSE_JWK_OKP_X25519, 256);
+    _test_cjose_jwk_create_OKP_random(CJOSE_JWK_OKP_X448, 448);
+}
+END_TEST
+
 START_TEST(test_cjose_jwk_retain_release)
 {
     cjose_err err;
@@ -586,6 +676,47 @@ START_TEST(test_cjose_jwk_to_json_rsa)
                      ",\"qi\":\"xTJ_ON_6kc9g3ZbunSSt_oqJBguxH2x8HVl2KQXafW-F0_DOv09P1e0fbSdOLhR-V9lLjq8DxOcvCMxkpQr2G8lTaBRVTF_-"
                      "szu9adi9bgb_-egvc_NAvRkuGE9fUmB2_nAyU-j4VUh1MMSP5qqQhMYvFdAF5y36MpI-pV1SLFQ\""
                      "}",
+                     json);
+    free(json);
+
+    cjose_jwk_release(jwk);
+}
+END_TEST
+
+START_TEST(test_cjose_jwk_to_json_okp)
+{
+    cjose_err err;
+    cjose_jwk_t *jwk = NULL;
+    cjose_jwk_okp_keyspec spec;
+
+    memset(&spec, 0, sizeof(cjose_jwk_okp_keyspec));
+    spec.crv = CJOSE_JWK_OKP_ED25519;
+    cjose_base64url_decode(OKP_ED25519_d, strlen(OKP_ED25519_d), &spec.d, &spec.dlen, &err);
+    cjose_base64url_decode(OKP_ED25519_x, strlen(OKP_ED25519_x), &spec.x, &spec.xlen, &err);
+
+    jwk = cjose_jwk_create_OKP_spec(&spec, &err);
+    cjose_get_dealloc()(spec.d);
+    cjose_get_dealloc()(spec.x);
+
+    char *json;
+    json = cjose_jwk_to_json(jwk, false, &err);
+    ck_assert_msg(NULL != json,
+                  "cjose_jwk_to_json failed: "
+                  "%s, file: %s, function: %s, line: %ld",
+                  err.message, err.file, err.function, err.line);
+    ck_assert_str_eq("{\"kty\":\"OKP\",\"crv\":\"Ed25519\""
+                     ",\"x\":\"11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo\"}",
+                     json);
+    free(json);
+
+    json = cjose_jwk_to_json(jwk, true, &err);
+    ck_assert_msg(NULL != json,
+                  "cjose_jwk_to_json failed: "
+                  "%s, file: %s, function: %s, line: %ld",
+                  err.message, err.file, err.function, err.line);
+    ck_assert_str_eq("{\"kty\":\"OKP\",\"crv\":\"Ed25519\""
+                     ",\"x\":\"11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo\""
+                     ",\"d\":\"nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A\"}",
                      json);
     free(json);
 
@@ -1456,11 +1587,17 @@ Suite *cjose_jwk_suite(void)
     tcase_add_test(tc_jwk, test_cjose_jwk_create_oct_spec);
     tcase_add_test(tc_jwk, test_cjose_jwk_create_oct_random);
     tcase_add_test(tc_jwk, test_cjose_jwk_create_oct_random_inval);
+    tcase_add_test(tc_jwk, test_cjose_jwk_create_OKP_Ed25519_spec);
+    tcase_add_test(tc_jwk, test_cjose_jwk_create_OKP_Ed448_spec);
+    tcase_add_test(tc_jwk, test_cjose_jwk_create_OKP_X25519_spec);
+    tcase_add_test(tc_jwk, test_cjose_jwk_create_OKP_X448_spec);
+    tcase_add_test(tc_jwk, test_cjose_jwk_create_OKP_random);
     tcase_add_test(tc_jwk, test_cjose_jwk_retain_release);
     tcase_add_test(tc_jwk, test_cjose_jwk_get_kty);
     tcase_add_test(tc_jwk, test_cjose_jwk_to_json_oct);
     tcase_add_test(tc_jwk, test_cjose_jwk_to_json_ec);
     tcase_add_test(tc_jwk, test_cjose_jwk_to_json_rsa);
+    tcase_add_test(tc_jwk, test_cjose_jwk_to_json_okp);
     tcase_add_test(tc_jwk, test_cjose_jwk_import_json_valid);
     tcase_add_test(tc_jwk, test_cjose_jwk_import_json_invalid);
     tcase_add_test(tc_jwk, test_cjose_jwk_import_valid);

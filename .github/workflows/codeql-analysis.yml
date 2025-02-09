@@ -63,7 +63,7 @@ jobs:
     #    uses a compiled language
 
     - run: |
-       touch aclocal.m4 configure Makefile.am Makefile.in 
+       touch aclocal.m4 configure Makefile.am Makefile.in
        ./configure --with-rsapkcs1_5
        make check
 

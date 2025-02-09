@@ -1,62 +1,31 @@
-# Build files
-autom4te.cache/
-config.log
-config.status
-Makefile
-libtool
-*/.deps
-*/.libs
-include/cjose/version.h
-doc/Doxyfile
-**/*.pkg-tag
-**/*.img-tag
-
-# Object files
-*.o
-*.lo
-
-# Libraries
-*.lib
-*.a
-
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
-*.la
-
-# Executables
-*.exe
-*.out
-*.app
-
-# Documentation and Packaging
-doc/*.tag
-doc/html
-doc/latex
-cjose.pc
-
-# Tests and logging
-test/check_cjose
-test/*.log
-test/*.trs
-
-# local edit and ide files
-.swp
-.*.swp
-.tags
-*.sublime-project
-*.sublime-workspace
-*-e
-/.project
-/.cproject
-
-# Deliverables
-cjose-*.tar.gz
-dist/
-/configure~
+/autom4te.cache/
+/config.log
+/config.status
+/libtool
+/Makefile
 /config.guess~
 /config.sub~
+/configure~
 /install-sh~
-/.deps/
+/cjose.pc
+/include/cjose/version.h
+.deps
+.libs
+.dirstamp
+*.o
+*.lo
+*.a
+*.la
+/doc/Makefile
+/doc/Doxyfile
+/doc/*.tag
+/doc/html
+/doc/latex
+/test/Makefile
+/test/check_cjose
+/test/*.log
+/test/*.trs
+/.project
+/.cproject
+/.settings
+/cjose-*.tar.gz

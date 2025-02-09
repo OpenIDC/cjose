@@ -29,12 +29,13 @@ PKG_CHECK_MODULES([CHECK], [check >= 0.9.4], [have_check="yes"], [have_check="no
 AM_CONDITIONAL(HAVE_CHECK, test x"$have_check" = "xyes")
 
 AM_EXTRA_RECURSIVE_TARGETS([package])
-AC_CONFIG_FILES([Makefile
-                 include/Makefile include/cjose/version.h
-                 src/Makefile
-                 test/Makefile
-                 doc/Makefile doc/Doxyfile
-                 cjose.pc])
+AC_CONFIG_FILES([
+	Makefile
+	include/cjose/version.h
+	test/Makefile
+	doc/Makefile doc/Doxyfile
+	cjose.pc
+])
 
 AC_OUTPUT
 

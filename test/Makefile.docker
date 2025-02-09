@@ -1,0 +1,32 @@
+DOCKER_TAG=cjose/test
+
+# OPENSSL_VERSION=3.4.0
+DOCKER_BUILD_ARGS := \
+	--build-arg OPENSSL_VERSION= \
+	--build-arg CONFIGURE_ARGS=-with-rsapkcs1_5 \
+	--progress plain \
+	-t $(DOCKER_TAG)
+	
+docker-build:
+	docker build $(DOCKER_BUILD_ARGS) -f test/Dockerfile  . 
+
+DOCKER_RUN_ARGS := \
+	--rm \
+	-e LD_LIBRARY_PATH=/usr/local/lib:/root/cjose/.libs \
+	-it $(DOCKER_TAG):latest
+
+docker-check: docker-build
+	docker run $(DOCKER_RUN_ARGS) \
+		bash -c "make check || cat test/test-suite.log"
+
+VALGRIND_FLAGS := -s --leak-check=full --show-leak-kinds=all --read-inline-info=yes --keep-debuginfo=yes 
+
+docker-valgrind: docker-build
+	docker run -e CK_FORK=no $(DOCKER_RUN_ARGS) \
+		/usr/bin/valgrind ${VALGRIND_FLAGS} test/.libs/check_cjose
+		
+DOCKER_GDB_FLAGS := --cap-add=SYS_PTRACE --security-opt seccomp=unconfined  
+
+docker-gdb: docker-build
+	docker run $(DOCKER_GDB_FLAGS) $(DOCKER_RUN_ARGS) \
+		/usr/bin/gdb test/.libs/check_cjose

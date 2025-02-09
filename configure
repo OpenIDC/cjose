@@ -16194,7 +16194,7 @@ fi
 
 
 
-ac_config_files="$ac_config_files Makefile include/Makefile include/cjose/version.h src/Makefile test/Makefile doc/Makefile doc/Doxyfile cjose.pc"
+ac_config_files="$ac_config_files Makefile include/cjose/version.h test/Makefile doc/Makefile doc/Doxyfile cjose.pc"
 
 
 cat >confcache <<\_ACEOF
@@ -17282,9 +17282,7 @@ do
     "depfiles") CONFIG_COMMANDS="$CONFIG_COMMANDS depfiles" ;;
     "libtool") CONFIG_COMMANDS="$CONFIG_COMMANDS libtool" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
-    "include/Makefile") CONFIG_FILES="$CONFIG_FILES include/Makefile" ;;
     "include/cjose/version.h") CONFIG_FILES="$CONFIG_FILES include/cjose/version.h" ;;
-    "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
     "test/Makefile") CONFIG_FILES="$CONFIG_FILES test/Makefile" ;;
     "doc/Makefile") CONFIG_FILES="$CONFIG_FILES doc/Makefile" ;;
     "doc/Doxyfile") CONFIG_FILES="$CONFIG_FILES doc/Doxyfile" ;;

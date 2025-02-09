@@ -15,7 +15,6 @@
 #include "include/header_int.h"
 
 const char *CJOSE_HDR_ALG = "alg";
-const char *CJOSE_HDR_ALG_NONE = "none";
 const char *CJOSE_HDR_ALG_ECDH_ES = "ECDH-ES";
 const char *CJOSE_HDR_ALG_RSA_OAEP = "RSA-OAEP";
 const char *CJOSE_HDR_ALG_RSA1_5 = "RSA1_5";
@@ -35,6 +34,7 @@ const char *CJOSE_HDR_ALG_HS512 = "HS512";
 const char *CJOSE_HDR_ALG_ES256 = "ES256";
 const char *CJOSE_HDR_ALG_ES384 = "ES384";
 const char *CJOSE_HDR_ALG_ES512 = "ES512";
+const char *CJOSE_HDR_ALG_EdDSA = "EdDSA";
 
 const char *CJOSE_HDR_ENC = "enc";
 const char *CJOSE_HDR_ENC_A128GCM = "A128GCM";

@@ -55,10 +55,17 @@ typedef struct _ec_keydata_int
     EVP_PKEY *key;
 } ec_keydata;
 
+// OKP-specific keydata
+typedef struct _okp_keydata_int
+{
+    cjose_jwk_okp_curve crv;
+    EVP_PKEY *key;
+} okp_keydata;
+
 bool cjose_jwk_derive_ecdh_bits(
     const cjose_jwk_t *jwk_self, const cjose_jwk_t *jwk_peer, uint8_t **output, size_t *output_len, cjose_err *err);
 
-// HKDF implementation, note it currrently supports only SHA256, no info
+// HKDF implementation, note it currently supports only SHA256, no info
 // and okm must be exactly 32 bytes.
 bool cjose_jwk_hkdf(const EVP_MD *md,
                     const uint8_t *salt,

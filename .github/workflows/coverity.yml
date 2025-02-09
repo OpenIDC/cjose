@@ -35,7 +35,7 @@ jobs:
           tar xzf cov-analysis-linux64.tar.gz --strip 1 -C cov-analysis-linux64
       - name: Configure
         run: |
-          touch aclocal.m4 configure Makefile.am Makefile.in 
+          touch aclocal.m4 configure Makefile.am Makefile.in
           ./configure --with-rsapkcs1_5
       - name: Make with cov-build
         run: |
@@ -50,8 +50,8 @@ jobs:
           curl \
             --form project=OpenIDC%2Fcjose \
             --form token=$TOKEN \
-            --form email=hans.zandbelt@zmartone.eu \
+            --form email=hans.zandbelt@openidc.com \
             --form file=@cjose.tgz \
-            --form version=master \
+            --form version=1.0.0 \
             --form description="`git rev-parse --abbrev-ref HEAD` `git rev-parse --short HEAD`" \
             https://scan.coverity.com/builds?project=OpenIDC%2Fcjose

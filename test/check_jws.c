@@ -54,6 +54,16 @@ static const char *JWK_COMMON_EC = "{ \"kty\":\"EC\","
                                    "\"y\":\"KbkZ7r_DQ-t67pnxPnFDHObTLBqn44BSjcqn0STUkaM\","
                                    "\"d\":\"RSSjcBQW_EBxm1gzYhejCdWtj3Id_GuwldwEgSuKCEM\" }";
 
+static const char *JWK_COMMON_OKP = "{\"kty\":\"OKP\","
+                                    "\"crv\":\"Ed25519\","
+                                    "\"d\":\"kiUurmRD8nQ-XeLUAOS5RUzvBdc5Mo0kIV5T3XLHg_M\","
+                                    "\"x\":\"I6xXpbmh5iLUVx0wy2XvVKVRQYLnx72lPpnEAdwT82I\"}";
+
+// static const char *JWK_COMMON_OKP = "{\"kty\":\"OKP\","
+//                                     "\"crv\":\"Ed448\","
+//                                     "\"d\":\"oGPIKJFtuoGB5jlVOAndK8d9MtZcYu-1Kh4ISCqNpy2tw8NbVtNVgUHzzkSx0WaFkqQHalP3fiul\","
+//                                     "\"x\":\"j531A8-05AW0GGOnvpQyiDrC3eBrHW9w1Q8YjhYZiHtBn6czxQjpluO5_sZ_xEUpQxbtW0TRjvUA\"}";
+
 // a JWS encrypted with the above JWK_COMMON key
 static const char *JWS_COMMON
     = "eyAiYWxnIjogIlBTMjU2IiB9."
@@ -75,6 +85,8 @@ static const char *_self_get_jwk_by_alg(const char *alg)
     if ((strcmp(alg, CJOSE_HDR_ALG_ES256) == 0) || (strcmp(alg, CJOSE_HDR_ALG_ES384) == 0)
         || (strcmp(alg, CJOSE_HDR_ALG_ES512) == 0))
         return JWK_COMMON_EC;
+    if ((strcmp(alg, CJOSE_HDR_ALG_EdDSA) == 0))
+        return JWK_COMMON_OKP;
     return JWK_COMMON;
 }
 
@@ -163,24 +175,27 @@ START_TEST(test_cjose_jws_self_sign_self_verify)
     _self_sign_self_verify(PLAIN_COMMON, CJOSE_HDR_ALG_ES256, &err);
     _self_sign_self_verify(PLAIN_COMMON, CJOSE_HDR_ALG_ES384, &err);
     _self_sign_self_verify(PLAIN_COMMON, CJOSE_HDR_ALG_ES512, &err);
+    _self_sign_self_verify(PLAIN_COMMON, CJOSE_HDR_ALG_EdDSA, &err);
 }
 END_TEST
 
 START_TEST(test_cjose_jws_self_sign_self_verify_short)
 {
     cjose_err err;
-    _self_sign_self_verify("Setec Astronomy", CJOSE_HDR_ALG_PS256, &err);
-    _self_sign_self_verify("Setec Astronomy", CJOSE_HDR_ALG_PS384, &err);
-    _self_sign_self_verify("Setec Astronomy", CJOSE_HDR_ALG_PS512, &err);
-    _self_sign_self_verify("Setec Astronomy", CJOSE_HDR_ALG_RS256, &err);
-    _self_sign_self_verify("Setec Astronomy", CJOSE_HDR_ALG_RS384, &err);
-    _self_sign_self_verify("Setec Astronomy", CJOSE_HDR_ALG_RS512, &err);
-    _self_sign_self_verify("Setec Astronomy", CJOSE_HDR_ALG_HS256, &err);
-    _self_sign_self_verify("Setec Astronomy", CJOSE_HDR_ALG_HS384, &err);
-    _self_sign_self_verify("Setec Astronomy", CJOSE_HDR_ALG_HS512, &err);
-    _self_sign_self_verify("Setec Astronomy", CJOSE_HDR_ALG_ES256, &err);
-    _self_sign_self_verify("Setec Astronomy", CJOSE_HDR_ALG_ES384, &err);
-    _self_sign_self_verify("Setec Astronomy", CJOSE_HDR_ALG_ES512, &err);
+    static const char *PLAINTEXT = "Setec Astronomy";
+    _self_sign_self_verify(PLAINTEXT, CJOSE_HDR_ALG_PS256, &err);
+    _self_sign_self_verify(PLAINTEXT, CJOSE_HDR_ALG_PS384, &err);
+    _self_sign_self_verify(PLAINTEXT, CJOSE_HDR_ALG_PS512, &err);
+    _self_sign_self_verify(PLAINTEXT, CJOSE_HDR_ALG_RS256, &err);
+    _self_sign_self_verify(PLAINTEXT, CJOSE_HDR_ALG_RS384, &err);
+    _self_sign_self_verify(PLAINTEXT, CJOSE_HDR_ALG_RS512, &err);
+    _self_sign_self_verify(PLAINTEXT, CJOSE_HDR_ALG_HS256, &err);
+    _self_sign_self_verify(PLAINTEXT, CJOSE_HDR_ALG_HS384, &err);
+    _self_sign_self_verify(PLAINTEXT, CJOSE_HDR_ALG_HS512, &err);
+    _self_sign_self_verify(PLAINTEXT, CJOSE_HDR_ALG_ES256, &err);
+    _self_sign_self_verify(PLAINTEXT, CJOSE_HDR_ALG_ES384, &err);
+    _self_sign_self_verify(PLAINTEXT, CJOSE_HDR_ALG_ES512, &err);
+    _self_sign_self_verify(PLAINTEXT, CJOSE_HDR_ALG_EdDSA, &err);
 }
 END_TEST
 
@@ -199,6 +214,7 @@ START_TEST(test_cjose_jws_self_sign_self_verify_empty)
     _self_sign_self_verify("", CJOSE_HDR_ALG_ES256, &err);
     _self_sign_self_verify("", CJOSE_HDR_ALG_ES384, &err);
     _self_sign_self_verify("", CJOSE_HDR_ALG_ES512, &err);
+    _self_sign_self_verify("", CJOSE_HDR_ALG_EdDSA, &err);
 }
 END_TEST
 
@@ -225,6 +241,7 @@ START_TEST(test_cjose_jws_self_sign_self_verify_many)
         _self_sign_self_verify(plain, CJOSE_HDR_ALG_ES256, &err);
         _self_sign_self_verify(plain, CJOSE_HDR_ALG_ES384, &err);
         _self_sign_self_verify(plain, CJOSE_HDR_ALG_ES512, &err);
+        _self_sign_self_verify(plain, CJOSE_HDR_ALG_EdDSA, &err);
         free(plain);
     }
 }
@@ -907,6 +924,153 @@ START_TEST(test_cjose_jws_verify_ec256)
 }
 END_TEST
 
+START_TEST(test_cjose_jws_verify_EdDSA)
+{
+    cjose_err err;
+
+    // https://tools.ietf.org/rfc/rfc8037.html#appendix-A.4
+    // {"alg":"EdDSA"}
+    static const char *JWS = "eyJhbGciOiJFZERTQSJ9."
+                             "RXhhbXBsZSBvZiBFZDI1NTE5IHNpZ25pbmc."
+                             "hgyY0il_MGCjP0JzlnLWG1PPOt7-09PGcvMg3AIbQR6dWbhijcNR4ki4iylGjg5BhVsPt9g7sVvpAr_MuM0KAg";
+
+    cjose_jws_t *jws_ok = cjose_jws_import(JWS, strlen(JWS), &err);
+    ck_assert_msg(NULL != jws_ok,
+                  "cjose_jws_import failed: "
+                  "%s, file: %s, function: %s, line: %ld",
+                  err.message, err.file, err.function, err.line);
+
+    static const char *JWK = "{\"kty\":\"OKP\","
+                             "\"crv\":\"Ed25519\","
+                             "\"x\":\"11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo\"}";
+
+    // import the key
+    cjose_jwk_t *jwk = cjose_jwk_import(JWK, strlen(JWK), &err);
+    ck_assert_msg(NULL != jwk,
+                  "cjose_jwk_import failed: "
+                  "%s, file: %s, function: %s, line: %ld",
+                  err.message, err.file, err.function, err.line);
+
+    // verify the deserialized JWS
+
+    ck_assert_msg(cjose_jws_verify(jws_ok, jwk, &err),
+                  "cjose_jws_verify failed: "
+                  "%s, file: %s, function: %s, line: %ld",
+                  err.message, err.file, err.function, err.line);
+
+    // get the verified plaintext
+    uint8_t *plain = NULL;
+    size_t plain_len = 0;
+    ck_assert_msg(cjose_jws_get_plaintext(jws_ok, &plain, &plain_len, &err),
+                  "cjose_jws_get_plaintext failed: "
+                  "%s, file: %s, function: %s, line: %ld",
+                  err.message, err.file, err.function, err.line);
+
+    static const char *PLAINTEXT = "Example of Ed25519 signing";
+
+    // confirm plain == PLAINTEXT
+    ck_assert_msg(plain_len == strlen(PLAINTEXT),
+                  "length of verified plaintext does not match length of original, "
+                  "expected: %lu, found: %lu",
+                  strlen(PLAINTEXT), plain_len);
+    ck_assert_msg(strncmp(PLAINTEXT, plain, plain_len) == 0, "verified plaintext does not match signed plaintext: %s", plain);
+    cjose_jws_release(jws_ok);
+
+    static const char *JWS_TAMPERED_SIG = "eyJhbGciOiJFZERTQSJ9."
+                                          "RXhhbXBsZSBvZiBFZDI1NTE5IHNpZ25pbmc."
+                                          "hgyY0il_MGCjP0JzlnLWG1PPOt7-09PGcvMg3AIbQR6dWbhijcNR4ki4iylGjg5BhVsPt9g7sVvpAr_MuM0KAZ";
+
+    cjose_jws_t *jws_ts = cjose_jws_import(JWS_TAMPERED_SIG, strlen(JWS_TAMPERED_SIG), &err);
+    ck_assert_msg(NULL != jws_ts,
+                  "cjose_jws_import failed: "
+                  "%s, file: %s, function: %s, line: %ld",
+                  err.message, err.file, err.function, err.line);
+
+    ck_assert_msg(!cjose_jws_verify(jws_ts, jwk, &err), "cjose_jws_verify succeeded with tampered signature");
+    ck_assert_msg(err.code == CJOSE_ERR_CRYPTO, "cjose_jws_verify returned wrong err.code (%i:%s)", err.code, err.message);
+    cjose_jws_release(jws_ts);
+
+    static const char *JWS_TAMPERED_CONTENT
+        = "eyJhbGciOiJFZERTQSJ9."
+          "RXhhbXBsZSBvZiB0YW1wZXJlZCBFZDI1NTE5IHNpZ25pbmc."
+          "hgyY0il_MGCjP0JzlnLWG1PPOt7-09PGcvMg3AIbQR6dWbhijcNR4ki4iylGjg5BhVsPt9g7sVvpAr_MuM0KAh";
+
+    cjose_jws_t *jws_tc = cjose_jws_import(JWS_TAMPERED_CONTENT, strlen(JWS_TAMPERED_CONTENT), &err);
+    ck_assert_msg(NULL != jws_tc,
+                  "cjose_jws_import failed: "
+                  "%s, file: %s, function: %s, line: %ld",
+                  err.message, err.file, err.function, err.line);
+
+    ck_assert_msg(!cjose_jws_verify(jws_tc, jwk, &err), "cjose_jws_verify succeeded with tampered content");
+    ck_assert_msg(err.code == CJOSE_ERR_CRYPTO, "cjose_jws_verify returned wrong err.code (%i:%s)", err.code, err.message);
+
+    cjose_jws_release(jws_tc);
+
+    cjose_jwk_release(jwk);
+}
+END_TEST
+
+START_TEST(test_cjose_jws_sign_EdDSA)
+{
+    cjose_err err;
+
+    // https://tools.ietf.org/rfc/rfc8037.html#appendix-A.4
+    // {"alg":"EdDSA"}
+    static const char *JWS = "eyJhbGciOiJFZERTQSJ9."
+                             "RXhhbXBsZSBvZiBFZDI1NTE5IHNpZ25pbmc."
+                             "hgyY0il_MGCjP0JzlnLWG1PPOt7-09PGcvMg3AIbQR6dWbhijcNR4ki4iylGjg5BhVsPt9g7sVvpAr_MuM0KAg";
+
+    static const char *JWK = "{\"kty\":\"OKP\","
+                             "\"crv\":\"Ed25519\","
+                             "\"d\":\"nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A\","
+                             "\"x\":\"11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo\"}";
+
+    // import the key
+    cjose_jwk_t *jwk = cjose_jwk_import(JWK, strlen(JWK), &err);
+    ck_assert_msg(NULL != jwk,
+                  "cjose_jwk_import failed: "
+                  "%s, file: %s, function: %s, line: %ld",
+                  err.message, err.file, err.function, err.line);
+
+    // set header for JWS
+    cjose_header_t *hdr = cjose_header_new(&err);
+    ck_assert_msg(cjose_header_set(hdr, CJOSE_HDR_ALG, CJOSE_HDR_ALG_EdDSA, &err),
+                  "cjose_header_set failed: "
+                  "%s, file: %s, function: %s, line: %ld",
+                  err.message, err.file, err.function, err.line);
+
+    static const char *PLAINTEXT = "Example of Ed25519 signing";
+
+    // create the JWS
+    size_t plain1_len = strlen(PLAINTEXT);
+    cjose_jws_t *jws1 = cjose_jws_sign(jwk, hdr, PLAINTEXT, plain1_len, &err);
+    ck_assert_msg(NULL != jws1,
+                  "cjose_jws_sign [%s] failed: "
+                  "%s, file: %s, function: %s, line: %ld",
+                  CJOSE_HDR_ALG_EdDSA, err.message, err.file, err.function, err.line);
+    ck_assert_msg(hdr == cjose_jws_get_protected(jws1), "cjose_jws_get_protected after cjose_jws_sign [%s] failed",
+                  CJOSE_HDR_ALG_EdDSA);
+
+    // get the compact serialization of JWS
+    const char *compact = NULL;
+    ck_assert_msg(cjose_jws_export(jws1, &compact, &err),
+                  "cjose_jws_export failed: "
+                  "%s, file: %s, function: %s, line: %ld",
+                  err.message, err.file, err.function, err.line);
+
+    plain1_len = strlen(compact);
+    ck_assert_msg(plain1_len == strlen(JWS),
+                  "length of the serialized JWS does not match length of original, "
+                  "expected: %lu, found: %lu",
+                  strlen(JWS), plain1_len);
+    ck_assert_msg(strncmp(JWS, compact, plain1_len) == 0, "serialized JWS (%s) does not match original: %s", compact, JWS);
+
+    cjose_header_release(hdr);
+    cjose_jws_release(jws1);
+    cjose_jwk_release(jwk);
+}
+END_TEST
+
 START_TEST(test_cjose_jws_none)
 {
     cjose_err err;
@@ -990,6 +1154,8 @@ Suite *cjose_jws_suite(void)
     tcase_add_test(tc_jws, test_cjose_jws_verify_rs256);
     tcase_add_test(tc_jws, test_cjose_jws_verify_rs384);
     tcase_add_test(tc_jws, test_cjose_jws_verify_ec256);
+    tcase_add_test(tc_jws, test_cjose_jws_verify_EdDSA);
+    tcase_add_test(tc_jws, test_cjose_jws_sign_EdDSA);
     tcase_add_test(tc_jws, test_cjose_jws_sign_with_bad_header);
     tcase_add_test(tc_jws, test_cjose_jws_sign_with_bad_key);
     tcase_add_test(tc_jws, test_cjose_jws_sign_with_bad_content);
