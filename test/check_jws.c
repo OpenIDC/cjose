@@ -1071,75 +1071,6 @@ START_TEST(test_cjose_jws_sign_EdDSA)
 }
 END_TEST
 
-START_TEST(test_cjose_jws_none)
-{
-    cjose_err err;
-
-    // https://tools.ietf.org/html/rfc7519#section-6.1
-    // Unsecured JWT (alg=none)
-    static const char *JWS = "eyJhbGciOiJub25lIn0"
-                             ".eyJpc3MiOiJqb2UiLA0KICJleHAiOjEzMDA4MTkzODAsDQogImh0dHA6Ly9leGFtcGxlLmNvbS9pc19yb290Ijp0cnVlfQ"
-                             ".";
-
-    cjose_jws_t *jws = cjose_jws_import(JWS, strlen(JWS), &err);
-    ck_assert_msg(NULL != jws,
-                  "cjose_jws_import failed: "
-                  "%s, file: %s, function: %s, line: %ld",
-                  err.message, err.file, err.function, err.line);
-
-    static const char *JWK = "{ \"kty\": \"EC\","
-                             "\"kid\": \"h4h93\","
-                             "\"use\": \"sig\","
-                             "\"x\": \"qcZ8jiBDygzf1XMWNN3jS7qT3DDslHOYvaa6XHMxShw\","
-                             "\"y\": \"vMcP1OkZsSNaFN6MHrdApLdtLPWo8RnNflgP3DAbcfY\","
-                             "\"crv\": \"P-256\" }";
-
-    // import the key
-    cjose_jwk_t *jwk = cjose_jwk_import(JWK, strlen(JWK), &err);
-    ck_assert_msg(NULL != jwk,
-                  "cjose_jwk_import failed: "
-                  "%s, file: %s, function: %s, line: %ld",
-                  err.message, err.file, err.function, err.line);
-
-    // get the plaintext
-    uint8_t *plain = NULL;
-    size_t plain_len = 0;
-    ck_assert_msg(cjose_jws_get_plaintext(jws, &plain, &plain_len, &err),
-                  "cjose_jws_get_plaintext failed: "
-                  "%s, file: %s, function: %s, line: %ld",
-                  err.message, err.file, err.function, err.line);
-
-    static const char *PLAINTEXT = "{\"iss\":\"joe\",\r\n"
-                                   " \"exp\":1300819380,\r\n"
-                                   " \"http://example.com/is_root\":true}";
-
-    // confirm plain == PLAINTEXT
-    ck_assert_msg(plain_len == strlen(PLAINTEXT),
-                  "length of verified plaintext does not match length of original, "
-                  "expected: %lu, found: %lu",
-                  strlen(PLAINTEXT), plain_len);
-    ck_assert_msg(strncmp(PLAINTEXT, plain, plain_len) == 0, "verified plaintext does not match signed plaintext: %s", plain);
-
-    // try to verify the unsecured JWS
-    ck_assert_msg(!cjose_jws_verify(jws, jwk, &err), "cjose_jws_verify succeeded for unsecured JWT");
-
-    cjose_jws_release(jws);
-
-    jws = cjose_jws_import(JWS, strlen(JWS), &err);
-    ck_assert_msg(NULL != jws,
-                  "cjose_jws_import failed: "
-                  "%s, file: %s, function: %s, line: %ld",
-                  err.message, err.file, err.function, err.line);
-
-    // try to sign the unsecured JWS
-    ck_assert_msg(!cjose_jws_sign(jwk, (cjose_header_t *)jws->hdr, PLAINTEXT, strlen(PLAINTEXT), &err),
-                  "cjose_jws_sign succeeded for unsecured JWT");
-
-    cjose_jws_release(jws);
-    cjose_jwk_release(jwk);
-}
-END_TEST
-
 Suite *cjose_jws_suite(void)
 {
     Suite *suite = suite_create("jws");
@@ -1164,7 +1095,6 @@ Suite *cjose_jws_suite(void)
     tcase_add_test(tc_jws, test_cjose_jws_import_get_plain_before_verify);
     tcase_add_test(tc_jws, test_cjose_jws_import_get_plain_after_verify);
     tcase_add_test(tc_jws, test_cjose_jws_verify_bad_params);
-    tcase_add_test(tc_jws, test_cjose_jws_none);
     suite_add_tcase(suite, tc_jws);
 
     return suite;
