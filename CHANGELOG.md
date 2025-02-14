@@ -3,6 +3,7 @@
 * fix memory leak in ECDH-ES JWE encryption/decryption
 * fix rsa_q = NULL initialization in _RSA_private_fields
 * fix memory allocation check (typo) in jwk.c (https://github.com/OpenIDC/cjose/security/code-scanning/2)
+* re-generate automake/autoconf files with automake v1.17 and libtool v2.5.4
 
 <a name="v0.6.2.3"></a>
 ## [v0.6.2.3](https://github.com/OpenIDC/cjose/compare/v0.6.2.2...v0.6.2.3)  (2024-04-24)
