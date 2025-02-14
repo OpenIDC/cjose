@@ -5,23 +5,29 @@ on: [push, pull_request]
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    # TODO: gcc crashes on ubuntu-latest/ubuntu24.04 with uraimo/run-on-arch-action
+    runs-on: ubuntu-22.04
     name: Build on ${{ matrix.arch }}
 
     strategy:
       matrix:
         include:
+          - arch: armv6
+            distro: bookworm
           - arch: armv7
-            distro: ubuntu20.04
+            distro: ubuntu_latest
           - arch: aarch64
-            distro: ubuntu20.04
-          - arch: ppc64le
-            distro: ubuntu20.04
+            distro: ubuntu_latest
+          - arch: riscv64
+            # ubuntu22.04 / OpenSSL 3.0.2 seems to have an issue with EVP_PKEY_fromdata(EVP_PKEY_KEYPAIR)
+            distro: ubuntu_latest
           - arch: s390x
-            distro: ubuntu20.04
+            distro: ubuntu_latest
+          - arch: ppc64le
+            distro: ubuntu_latest
   
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: uraimo/run-on-arch-action@v2
       name: Build
       id: build
@@ -30,7 +36,7 @@ jobs:
         distro: ${{ matrix.distro }}
         install: |
           apt-get update -y
-          apt-get install -y pkg-config make gcc gdb valgrind vim autoconf automake libtool
+          apt-get install -y pkg-config make gcc autoconf automake libtool
           apt-get install -y libssl-dev libjansson-dev check
         setup: |
           mkdir -p "${PWD}/logs"
@@ -40,8 +46,8 @@ jobs:
           logfilename: test-suite-${{ matrix.distro }}-${{ matrix.arch }}.log
         run: |
           touch aclocal.m4 configure Makefile.am Makefile.in
-          ./configure CFLAGS="-g -O0" LDFLAGS="-lrt"
-          make check
+          ./configure --with-rsapkcs1_5  || { cat config.log && (exit -1) }
+          make check || { cat test/test-suite.log && (exit -1) }
           cat test/*.log >> "/logs/${logfilename}"
           echo "Copied test logs to /logs/${logfilename}"
           

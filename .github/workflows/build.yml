@@ -6,20 +6,20 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Dependencies
       run: |
         sudo apt-get update -y
-        sudo apt-get install -y pkg-config make gcc gdb valgrind vim autoconf automake libtool
+        sudo apt-get install -y pkg-config make gcc valgrind autoconf automake libtool
         sudo apt-get install -y libssl-dev libjansson-dev check
     - name: Configure
       run: |
-        touch aclocal.m4 configure Makefile.am Makefile.in
-        ./configure CFLAGS="-g -O0" LDFLAGS="-lrt"
+          touch aclocal.m4 configure Makefile.am Makefile.in
+          ./configure --with-rsapkcs1_5  || { cat config.log && (exit -1) }
     - name: Make
       run: make
     - name: Test
-      run: make check
+      run: make check || { cat test/test-suite.log && (exit -1) }
     - name: Valgrind
       env:
         CK_FORK: no
