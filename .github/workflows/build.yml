@@ -14,6 +14,7 @@ jobs:
         sudo apt-get install -y libssl-dev libjansson-dev check
     - name: Configure
       run: |
+        touch aclocal.m4 configure Makefile.am Makefile.in
         ./configure CFLAGS="-g -O0" LDFLAGS="-lrt"
     - name: Make
       run: make

@@ -63,6 +63,7 @@ jobs:
     #    uses a compiled language
 
     - run: |
+       touch aclocal.m4 configure Makefile.am Makefile.in
        ./configure CFLAGS="-g -O0" LDFLAGS="-lrt"
        make check
 
