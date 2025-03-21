@@ -5,8 +5,7 @@ on: [push, pull_request]
 jobs:
   build:
 
-    # TODO: gcc crashes on ubuntu-latest/ubuntu24.04 with uraimo/run-on-arch-action
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     name: Build on ${{ matrix.arch }}
 
     strategy:
@@ -28,7 +27,7 @@ jobs:
   
     steps:
     - uses: actions/checkout@v4
-    - uses: uraimo/run-on-arch-action@v2
+    - uses: uraimo/run-on-arch-action@v3
       name: Build
       id: build
       with:
