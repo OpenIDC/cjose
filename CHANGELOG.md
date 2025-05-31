@@ -3,6 +3,7 @@
 * fix memory leak in ECDH-ES JWE encryption/decryption
 * fix rsa_q = NULL initialization in _RSA_private_fields
 * fix memory allocation check (typo) in jwk.c (https://github.com/OpenIDC/cjose/security/code-scanning/2)
+* fix gcc10 errors for -Werror=ignored-qualifiers and remove unused includes ((https://github.com/OpenIDC/cjose/pull/26); thanks @s-ymgch228
 * re-generate automake/autoconf files with automake v1.17 and libtool v2.5.4
 
 <a name="v0.6.2.3"></a>
