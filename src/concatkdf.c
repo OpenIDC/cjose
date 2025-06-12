@@ -9,7 +9,6 @@
 
 #ifdef _WIN32
 #include <Winsock2.h>
-#include <malloc.h>
 #else
 #include <arpa/inet.h>
 #endif
