@@ -1,7 +1,7 @@
 # Release Notes #
 
 <a name="v0.6.2.4"></a>
-## [v0.6.2.3](https://github.com/OpenIDC/cjose/compare/v0.6.2.3...v0.6.2.4)  (2025-06-12)
+## [v0.6.2.4](https://github.com/OpenIDC/cjose/compare/v0.6.2.3...v0.6.2.4)  (2025-06-12)
 * fix memory leak in ECDH-ES JWE encryption/decryption
 * fix rsa_q = NULL initialization in _RSA_private_fields
 * fix memory allocation check (typo) in jwk.c (https://github.com/OpenIDC/cjose/security/code-scanning/2)
