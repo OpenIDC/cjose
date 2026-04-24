@@ -1,5 +1,7 @@
 # Release Notes #
 
+* Fix functions that rely on nonportable malloc behaviour; closes #29; thanks @kirill-shevtsov
+
 <a name="v0.6.2.4"></a>
 ## [v0.6.2.4](https://github.com/OpenIDC/cjose/compare/v0.6.2.3...v0.6.2.4)  (2025-06-12)
 * fix memory leak in ECDH-ES JWE encryption/decryption
