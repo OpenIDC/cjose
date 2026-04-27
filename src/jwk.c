@@ -13,6 +13,7 @@
 #include <cjose/base64.h>
 #include <cjose/util.h>
 
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -169,8 +170,13 @@ cjose_jwk_t *cjose_jwk_retain(cjose_jwk_t *jwk, cjose_err *err)
         return NULL;
     }
 
+    if (UINT_MAX == jwk->retained)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_INVALID_STATE);
+        return NULL;
+    }
+
     ++(jwk->retained);
-    // TODO: check for overflow
 
     return jwk;
 }
