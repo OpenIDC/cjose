@@ -320,14 +320,7 @@ static bool _cjose_jwe_validate_alg(cjose_header_t *protected_header,
                                     _jwe_int_recipient_t *recipient,
                                     cjose_err *err)
 {
-    static const char *const supported_crit_headers[] = {
-        "alg",
-        "enc",
-        "cty",
-        "epk",
-        "apu",
-        "apv"
-    };
+    static const char *const supported_crit_headers[] = { "alg", "enc", "cty", "epk", "apu", "apv" };
 
     if (!_cjose_header_validate_crit(protected_header, supported_crit_headers,
                                      sizeof(supported_crit_headers) / sizeof(supported_crit_headers[0]), err)
@@ -1549,7 +1542,8 @@ static bool _cjose_jwe_validate_decrypt_key(_jwe_int_recipient_t *recipient,
                                             const cjose_jwk_t *jwk,
                                             cjose_err *err)
 {
-    const char *alg = _cjose_jwe_get_from_headers(protected_header, shared_header, (cjose_header_t *)recipient->unprotected, CJOSE_HDR_ALG);
+    const char *alg
+        = _cjose_jwe_get_from_headers(protected_header, shared_header, (cjose_header_t *)recipient->unprotected, CJOSE_HDR_ALG);
     if (NULL == alg)
     {
         CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
@@ -1562,8 +1556,8 @@ static bool _cjose_jwe_validate_decrypt_key(_jwe_int_recipient_t *recipient,
         return false;
     }
 
-    if (((0 == strcmp(alg, CJOSE_HDR_ALG_A128KW)) || (0 == strcmp(alg, CJOSE_HDR_ALG_A192KW)) || (0 == strcmp(alg, CJOSE_HDR_ALG_A256KW))
-         || (0 == strcmp(alg, CJOSE_HDR_ALG_DIR)))
+    if (((0 == strcmp(alg, CJOSE_HDR_ALG_A128KW)) || (0 == strcmp(alg, CJOSE_HDR_ALG_A192KW))
+         || (0 == strcmp(alg, CJOSE_HDR_ALG_A256KW)) || (0 == strcmp(alg, CJOSE_HDR_ALG_DIR)))
         && jwk->kty != CJOSE_JWK_KTY_OCT)
     {
         CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
