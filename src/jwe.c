@@ -975,7 +975,7 @@ static bool _cjose_jwe_set_iv_aes_cbc(cjose_jwe_t *jwe, cjose_err *err)
     // And in the example in A.2.4 (https://tools.ietf.org/html/rfc7516#appendix-A.2.4)
     // they provide an example for AES128-CBC, which results (naturally) in the IV size of 128Bit.
     //
-    // The CISCO implementation chooses for the size of the IV the key size of the
+    // The CISCO implementation chose for the size of the IV the key size of the
     // cipher algorithm, which seems to be wrong.
     //
     // According to RFC 3602 section 3 (https://tools.ietf.org/html/rfc3602#section-3):

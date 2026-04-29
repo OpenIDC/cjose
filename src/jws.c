@@ -189,7 +189,7 @@ static bool _cjose_jws_build_dig_sha(cjose_jws_t *jws, const cjose_jwk_t *jwk, c
 
     if (NULL != jws->dig)
     {
-	_cjose_cleanse_dealloc(jws->dig, jws->dig_len);
+        _cjose_cleanse_dealloc(jws->dig, jws->dig_len);
         jws->dig = NULL;
     }
 
