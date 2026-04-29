@@ -3,8 +3,6 @@
  */
 
 // the check unit test framework headers are noisy, disable these warnings
-#pragma GCC diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
-#pragma GCC diagnostic ignored "-Wincompatible-pointer-types-discards-qualifiers"
 #pragma GCC diagnostic ignored "-Wpointer-sign"
 
 #include <check.h>

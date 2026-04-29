@@ -2,9 +2,6 @@
  *
  */
 
-// the check unit test framework headers are noisy, disable these warnings
-#pragma GCC diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
-
 #include <stdlib.h>
 #include <check.h>
 #include <cjose/version.h>

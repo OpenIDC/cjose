@@ -103,9 +103,9 @@ START_TEST(test_cjose_concatkdf_otherinfo_apuapv)
 {
     cjose_err err;
 
-    const uint8_t *apu = "expected apu";
+    uint8_t *apu = "expected apu";
     const size_t apuLen = strlen((const char *)apu);
-    const uint8_t *apv = "expected apv";
+    uint8_t *apv = "expected apv";
     const size_t apvLen = strlen((const char *)apv);
     cjose_header_t *hdr = _create_otherinfo_header(apu, apuLen, apv, apvLen, &err);
     uint8_t *otherinfo = NULL;

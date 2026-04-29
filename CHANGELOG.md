@@ -1,6 +1,18 @@
 # Release Notes #
 
 * Fix functions that rely on nonportable malloc behaviour; closes #29; thanks @kirill-shevtsov
+* Merge fixes from cisco/cjose, see #30; thanks @bifurcation and @yasuoka:
+  * Check ECDH secret allocation result; 
+  * Check base64 decode length bounds
+  * Guard JWK retain count overflow
+  * Enforce JOSE IV lengths
+  * Check JOSE algorithms against key types
+  * Validate critical JOSE headers
+  * Cleanse sensitive buffers before release
+  * Guard JWE buffer length calculations
+  * Use OpenSSL constant-time comparisons
+  * Validate EC inputs before key agreement
+  * Fix JWS import allocation handling
 
 <a name="v0.6.2.4"></a>
 ## [v0.6.2.4](https://github.com/OpenIDC/cjose/compare/v0.6.2.3...v0.6.2.4)  (2025-06-12)
