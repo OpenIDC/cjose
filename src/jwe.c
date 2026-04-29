@@ -14,7 +14,9 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 #include <openssl/rand.h>
+#include <openssl/crypto.h>
 #include <openssl/rsa.h>
 #include <openssl/evp.h>
 #include <openssl/aes.h>
@@ -69,6 +71,12 @@ static bool _cjose_jwe_decrypt_dat_aes_gcm(cjose_jwe_t *jwe, cjose_err *err);
 
 static bool _cjose_jwe_decrypt_dat_aes_cbc(cjose_jwe_t *jwe, cjose_err *err);
 
+static bool _cjose_jwe_validate_decrypt_key(_jwe_int_recipient_t *recipient,
+                                            cjose_header_t *protected_header,
+                                            cjose_header_t *shared_header,
+                                            const cjose_jwk_t *jwk,
+                                            cjose_err *err);
+
 static void _cjose_release_cek(uint8_t **cek, size_t cek_len)
 {
 
@@ -77,8 +85,7 @@ static void _cjose_release_cek(uint8_t **cek, size_t cek_len)
         return;
     }
 
-    memset(*cek, 0, cek_len);
-    cjose_get_dealloc()(*cek);
+    _cjose_cleanse_dealloc(*cek, cek_len);
     *cek = 0;
 }
 
@@ -313,6 +320,24 @@ static bool _cjose_jwe_validate_alg(cjose_header_t *protected_header,
                                     _jwe_int_recipient_t *recipient,
                                     cjose_err *err)
 {
+    static const char *const supported_crit_headers[] = {
+        "alg",
+        "enc",
+        "cty",
+        "epk",
+        "apu",
+        "apv"
+    };
+
+    if (!_cjose_header_validate_crit(protected_header, supported_crit_headers,
+                                     sizeof(supported_crit_headers) / sizeof(supported_crit_headers[0]), err)
+        || !_cjose_header_validate_crit(unprotected_header, supported_crit_headers,
+                                        sizeof(supported_crit_headers) / sizeof(supported_crit_headers[0]), err)
+        || !_cjose_header_validate_crit((cjose_header_t *)recipient->unprotected, supported_crit_headers,
+                                        sizeof(supported_crit_headers) / sizeof(supported_crit_headers[0]), err))
+    {
+        return false;
+    }
 
     const char *alg = _cjose_jwe_get_from_headers(protected_header, unprotected_header, (cjose_header_t *)recipient->unprotected,
                                                   CJOSE_HDR_ALG);
@@ -825,7 +850,7 @@ cjose_encrypt_ek_ecdh_es_finish:
 
     cjose_jwk_release(epk_jwk);
     cjose_get_dealloc()(epk_json);
-    cjose_get_dealloc()(secret);
+    _cjose_cleanse_dealloc(secret, secret_len);
     cjose_get_dealloc()(otherinfo);
 
     return result;
@@ -857,6 +882,12 @@ static bool _cjose_jwe_decrypt_ek_ecdh_es(_jwe_int_recipient_t *recipient, cjose
     if (NULL == epk_jwk)
     {
         // error details already set
+        goto cjose_decrypt_ek_ecdh_es_finish;
+    }
+
+    if (cjose_jwk_EC_get_curve(jwk, err) != cjose_jwk_EC_get_curve(epk_jwk, err))
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
         goto cjose_decrypt_ek_ecdh_es_finish;
     }
 
@@ -904,7 +935,7 @@ cjose_decrypt_ek_ecdh_es_finish:
 
     cjose_jwk_release(epk_jwk);
     cjose_get_dealloc()(epk_json);
-    cjose_get_dealloc()(secret);
+    _cjose_cleanse_dealloc(secret, secret_len);
     cjose_get_dealloc()(otherinfo);
 
     return result;
@@ -944,7 +975,7 @@ static bool _cjose_jwe_set_iv_aes_cbc(cjose_jwe_t *jwe, cjose_err *err)
     // And in the example in A.2.4 (https://tools.ietf.org/html/rfc7516#appendix-A.2.4)
     // they provide an example for AES128-CBC, which results (naturally) in the IV size of 128Bit.
     //
-    // The CISCO implementation chooses for the size of the IV the key size of the
+    // The CISCO implementation chose for the size of the IV the key size of the
     // cipher algorithm, which seems to be wrong.
     //
     // According to RFC 3602 section 3 (https://tools.ietf.org/html/rfc3602#section-3):
@@ -1128,7 +1159,16 @@ static bool _cjose_jwe_calc_auth_tag(const char *enc, cjose_jwe_t *jwe, uint8_t 
     uint64_t al = jwe->enc_header.b64u_len * 8;
 
     // concatenate AAD + IV + ciphertext + AAD length field
-    int msg_len = jwe->enc_header.b64u_len + jwe->enc_iv.raw_len + jwe->enc_ct.raw_len + sizeof(uint64_t);
+    size_t msg_len = jwe->enc_header.b64u_len;
+    if (msg_len > SIZE_MAX - jwe->enc_iv.raw_len || msg_len + jwe->enc_iv.raw_len > SIZE_MAX - jwe->enc_ct.raw_len
+        || msg_len + jwe->enc_iv.raw_len + jwe->enc_ct.raw_len > SIZE_MAX - sizeof(uint64_t))
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
+        goto _cjose_jwe_calc_auth_tag_end;
+    }
+    msg_len += jwe->enc_iv.raw_len;
+    msg_len += jwe->enc_ct.raw_len;
+    msg_len += sizeof(uint64_t);
     if (!_cjose_jwe_malloc(msg_len, false, &msg, err))
     {
         goto _cjose_jwe_calc_auth_tag_end;
@@ -1319,6 +1359,12 @@ static bool _cjose_jwe_decrypt_dat_aes_gcm(cjose_jwe_t *jwe, cjose_err *err)
     }
     EVP_CIPHER_CTX_init(ctx);
 
+    if (jwe->enc_iv.raw_len != 12)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
+        goto _cjose_jwe_decrypt_dat_aes_gcm_fail;
+    }
+
     // initialize context for decryption using AES GCM cipher and CEK and IV
     if (EVP_DecryptInit_ex(ctx, cipher, NULL, jwe->cek, jwe->enc_iv.raw) != 1)
     {
@@ -1394,6 +1440,12 @@ static bool _cjose_jwe_decrypt_dat_aes_cbc(cjose_jwe_t *jwe, cjose_err *err)
     }
     const char *enc = json_string_value(enc_obj);
 
+    if (jwe->enc_iv.raw_len != AES_BLOCK_SIZE)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
+        return false;
+    }
+
     // calculate Authentication Tag
     unsigned int tag_len = 0;
     uint8_t tag[EVP_MAX_MD_SIZE];
@@ -1403,7 +1455,7 @@ static bool _cjose_jwe_decrypt_dat_aes_cbc(cjose_jwe_t *jwe, cjose_err *err)
     }
 
     // compare the provided Authentication Tag against our calculation
-    if ((tag_len != jwe->enc_auth_tag.raw_len) || (cjose_const_memcmp(tag, jwe->enc_auth_tag.raw, tag_len) != 0))
+    if ((tag_len != jwe->enc_auth_tag.raw_len) || (CRYPTO_memcmp(tag, jwe->enc_auth_tag.raw, tag_len) != 0))
     {
         CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
         return false;
@@ -1449,7 +1501,13 @@ static bool _cjose_jwe_decrypt_dat_aes_cbc(cjose_jwe_t *jwe, cjose_err *err)
     }
 
     // allocate buffer for the plaintext + one block padding
-    int p_len = jwe->enc_ct.raw_len, f_len = 0;
+    if (jwe->enc_ct.raw_len > INT_MAX || jwe->enc_ct.raw_len > SIZE_MAX - AES_BLOCK_SIZE)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
+        goto _cjose_jwe_decrypt_dat_aes_cbc_fail;
+    }
+
+    int p_len = (int)jwe->enc_ct.raw_len, f_len = 0;
     cjose_get_dealloc()(jwe->dat);
     jwe->dat_len = p_len + AES_BLOCK_SIZE;
     if (!_cjose_jwe_malloc(jwe->dat_len, false, &jwe->dat, err))
@@ -1482,6 +1540,43 @@ _cjose_jwe_decrypt_dat_aes_cbc_fail:
         EVP_CIPHER_CTX_free(ctx);
     }
     return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+static bool _cjose_jwe_validate_decrypt_key(_jwe_int_recipient_t *recipient,
+                                            cjose_header_t *protected_header,
+                                            cjose_header_t *shared_header,
+                                            const cjose_jwk_t *jwk,
+                                            cjose_err *err)
+{
+    const char *alg = _cjose_jwe_get_from_headers(protected_header, shared_header, (cjose_header_t *)recipient->unprotected, CJOSE_HDR_ALG);
+    if (NULL == alg)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
+        return false;
+    }
+
+    if (((0 == strcmp(alg, CJOSE_HDR_ALG_RSA_OAEP)) || (0 == strcmp(alg, CJOSE_HDR_ALG_RSA1_5))) && jwk->kty != CJOSE_JWK_KTY_RSA)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
+        return false;
+    }
+
+    if (((0 == strcmp(alg, CJOSE_HDR_ALG_A128KW)) || (0 == strcmp(alg, CJOSE_HDR_ALG_A192KW)) || (0 == strcmp(alg, CJOSE_HDR_ALG_A256KW))
+         || (0 == strcmp(alg, CJOSE_HDR_ALG_DIR)))
+        && jwk->kty != CJOSE_JWK_KTY_OCT)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
+        return false;
+    }
+
+    if ((0 == strcmp(alg, CJOSE_HDR_ALG_ECDH_ES)) && jwk->kty != CJOSE_JWK_KTY_EC)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
+        return false;
+    }
+
+    return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2084,6 +2179,11 @@ uint8_t *cjose_jwe_decrypt_multi(cjose_jwe_t *jwe, cjose_key_locator key_locator
             continue;
         }
 
+        if (!_cjose_jwe_validate_decrypt_key(jwe->to + i, (cjose_header_t *)jwe->hdr, (cjose_header_t *)jwe->shared_hdr, key, err))
+        {
+            goto _cjose_jwe_decrypt_multi_fail;
+        }
+
         // decrypt JWE content-encryption key from encrypted key
         if (!jwe->to[i].fns.decrypt_ek(jwe->to + i, jwe, key, err))
         {
@@ -2144,6 +2244,11 @@ uint8_t *cjose_jwe_decrypt(cjose_jwe_t *jwe, const cjose_jwk_t *jwk, size_t *con
     if (NULL == jwe || NULL == jwk || NULL == content_len || jwe->to_count > 1)
     {
         CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
+        return NULL;
+    }
+
+    if (!_cjose_jwe_validate_decrypt_key(jwe->to, (cjose_header_t *)jwe->hdr, (cjose_header_t *)jwe->shared_hdr, jwk, err))
+    {
         return NULL;
     }
 
