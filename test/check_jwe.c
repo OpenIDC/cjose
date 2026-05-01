@@ -79,6 +79,8 @@ static const char *JWE_RSA
 static const char *PLAINTEXT = "If you reveal your secrets to the wind, you should not blame the "
                                "wind for revealing them to the trees. — Kahlil Gibran";
 
+#ifdef HAVE_RSA_PKCS1_PADDING
+
 static const cjose_jwk_t *cjose_multi_key_locator(cjose_jwe_t *jwe, cjose_header_t *hdr, void *data)
 {
     const char *kid = cjose_header_get(hdr, CJOSE_HDR_KID, NULL);
@@ -101,6 +103,8 @@ static const cjose_jwk_t *cjose_multi_key_locator(cjose_jwe_t *jwe, cjose_header
 
 static const cjose_jwk_t *cjose_multi_key_locator_none(cjose_jwe_t *jwe, cjose_header_t *hdr, void *data) { return NULL; }
 
+#endif
+
 START_TEST(test_cjose_jwe_node_jose_encrypt_self_decrypt)
 {
     cjose_err err;
@@ -121,7 +125,7 @@ START_TEST(test_cjose_jwe_node_jose_encrypt_self_decrypt)
 
     // decrypt the imported JWE
     size_t plain2_len = 0;
-    uint8_t *plain2 = cjose_jwe_decrypt(jwe, jwk, &plain2_len, &err);
+    char *plain2 = (char *)cjose_jwe_decrypt(jwe, jwk, &plain2_len, &err);
     ck_assert_msg(NULL != plain2,
                   "cjose_jwe_get_plaintext failed: "
                   "%s, file: %s, function: %s, line: %ld",
@@ -164,7 +168,7 @@ static void _self_encrypt_self_decrypt_with_key(const char *alg, const char *enc
 
     // create the JWE
     size_t plain1_len = strlen(plain1);
-    cjose_jwe_t *jwe1 = cjose_jwe_encrypt(jwk, hdr, plain1, plain1_len, &err);
+    cjose_jwe_t *jwe1 = cjose_jwe_encrypt(jwk, hdr, (const uint8_t *)plain1, plain1_len, &err);
     ck_assert_msg(NULL != jwe1, "cjose_jwe_encrypt failed: %s, file: %s, function: %s, line: %ld", err.message, err.file,
                   err.function, err.line);
     // ck_assert(hdr == cjose_jwe_get_protected(jwe1));
@@ -182,9 +186,9 @@ static void _self_encrypt_self_decrypt_with_key(const char *alg, const char *enc
                   alg, enc, err.message, err.file, err.function, err.line);
 
     // get the decrypted plaintext
-    uint8_t *plain2 = NULL;
+    char *plain2 = NULL;
     size_t plain2_len = 0;
-    plain2 = cjose_jwe_decrypt(jwe2, jwk, &plain2_len, &err);
+    plain2 = (char *)cjose_jwe_decrypt(jwe2, jwk, &plain2_len, &err);
     ck_assert_msg(NULL != plain2,
                   "cjose_jwe_decrypt failed: "
                   "%s, file: %s, function: %s, line: %ld",
@@ -303,7 +307,7 @@ _self_encrypt_self_decrypt_with_key_iv(const char *alg, const char *enc, const c
 
     // create the JWE
     size_t plain1_len = strlen(plain1);
-    cjose_jwe_t *jwe1 = cjose_jwe_encrypt_iv(jwk, hdr, iv, iv_len, plain1, plain1_len, &err);
+    cjose_jwe_t *jwe1 = cjose_jwe_encrypt_iv(jwk, hdr, iv, iv_len, (const uint8_t *)plain1, plain1_len, &err);
     ck_assert_msg(NULL != jwe1, "cjose_jwe_encrypt failed: %s, file: %s, function: %s, line: %ld", err.message, err.file,
                   err.function, err.line);
     // ck_assert(hdr == cjose_jwe_get_protected(jwe1));
@@ -321,9 +325,9 @@ _self_encrypt_self_decrypt_with_key_iv(const char *alg, const char *enc, const c
                   alg, enc, err.message, err.file, err.function, err.line);
 
     // get the decrypted plaintext
-    uint8_t *plain2 = NULL;
+    char *plain2 = NULL;
     size_t plain2_len = 0;
-    plain2 = cjose_jwe_decrypt(jwe2, jwk, &plain2_len, &err);
+    plain2 = (char *)cjose_jwe_decrypt(jwe2, jwk, &plain2_len, &err);
     ck_assert_msg(NULL != plain2,
                   "cjose_jwe_decrypt failed: "
                   "%s, file: %s, function: %s, line: %ld",
@@ -436,10 +440,10 @@ START_TEST(test_cjose_jwe_self_encrypt_self_decrypt_many)
     for (int i = 0; i < 100; ++i)
     {
         size_t len = random() % 1024;
-        char *plain = (char *)malloc(len);
+        unsigned char *plain = (unsigned char *)malloc(len);
         ck_assert_msg(RAND_bytes(plain, len) == 1, "RAND_bytes failed");
         plain[len - 1] = 0;
-        _self_encrypt_self_decrypt(plain);
+        _self_encrypt_self_decrypt((char *)plain);
         free(plain);
     }
 }
@@ -483,7 +487,7 @@ START_TEST(test_cjose_jwe_encrypt_with_bad_header)
                   err.message, err.file, err.function, err.line);
 
     // create a JWE
-    jwe = cjose_jwe_encrypt(jwk, hdr, plain, plain_len, &err);
+    jwe = cjose_jwe_encrypt(jwk, hdr, (const uint8_t *)plain, plain_len, &err);
     ck_assert_msg(NULL == jwe, "cjose_jwe_encrypt created with bad header");
     ck_assert_msg(err.code == CJOSE_ERR_INVALID_ARG, "cjose_jwe_encrypt returned bad err.code");
 
@@ -499,7 +503,7 @@ START_TEST(test_cjose_jwe_encrypt_with_bad_header)
                   err.message, err.file, err.function, err.line);
 
     // create a JWE
-    jwe = cjose_jwe_encrypt(jwk, hdr, plain, plain_len, &err);
+    jwe = cjose_jwe_encrypt(jwk, hdr, (const uint8_t *)plain, plain_len, &err);
     ck_assert_msg(NULL == jwe, "cjose_jwe_encrypt created with bad header");
     ck_assert_msg(err.code == CJOSE_ERR_INVALID_ARG, "cjose_jwe_encrypt returned bad err.code");
 
@@ -552,14 +556,14 @@ START_TEST(test_cjose_jwe_encrypt_with_bad_key)
                       "%s, file: %s, function: %s, line: %ld",
                       err.message, err.file, err.function, err.line);
 
-        jwe = cjose_jwe_encrypt(jwk, hdr, plain, plain_len, &err);
+        jwe = cjose_jwe_encrypt(jwk, hdr, (const uint8_t *)plain, plain_len, &err);
         ck_assert_msg(NULL == jwe, "cjose_jwe_encrypt created with bad key");
         ck_assert_msg(err.code == CJOSE_ERR_INVALID_ARG, "cjose_jwe_encrypt returned bad err.code");
 
         cjose_jwk_release(jwk);
     }
 
-    jwe = cjose_jwe_encrypt(NULL, hdr, plain, plain_len, &err);
+    jwe = cjose_jwe_encrypt(NULL, hdr, (const uint8_t *)plain, plain_len, &err);
     ck_assert_msg(NULL == jwe, "cjose_jwe_encrypt created with bad key");
     ck_assert_msg(err.code == CJOSE_ERR_INVALID_ARG, "cjose_jwe_encrypt returned bad err.code");
 
@@ -856,7 +860,7 @@ START_TEST(test_cjose_jwe_decrypt_aes)
 
     // decrypt the imported JWE
     size_t plain1_len = 0;
-    uint8_t *plain1 = cjose_jwe_decrypt(jwe, jwk, &plain1_len, &err);
+    char *plain1 = (char *)cjose_jwe_decrypt(jwe, jwk, &plain1_len, &err);
     ck_assert_msg(NULL != plain1,
                   "cjose_jwe_get_plaintext failed: "
                   "%s, file: %s, function: %s, line: %ld",
@@ -997,9 +1001,9 @@ START_TEST(test_cjose_jwe_decrypt_aes_gcm)
                   "%s, file: %s, function: %s, line: %ld",
                   err.message, err.file, err.function, err.line);
 
-    uint8_t *plain2 = NULL;
+    char *plain2 = NULL;
     size_t plain2_len = 0;
-    plain2 = cjose_jwe_decrypt(jwe1, jwk, &plain2_len, &err);
+    plain2 = (char *)cjose_jwe_decrypt(jwe1, jwk, &plain2_len, &err);
     ck_assert_msg(NULL != plain2,
                   "cjose_jwe_decrypt failed: "
                   "%s, file: %s, function: %s, line: %ld",
@@ -1160,7 +1164,7 @@ START_TEST(test_cjose_jwe_decrypt_rsa)
 
         // decrypt the imported JWE
         size_t plain1_len = 0;
-        uint8_t *plain1 = cjose_jwe_decrypt(jwe, jwk, &plain1_len, &err);
+        char *plain1 = (char *)cjose_jwe_decrypt(jwe, jwk, &plain1_len, &err);
         ck_assert_msg(NULL != plain1,
                       "cjose_jwe_get_plaintext failed: "
                       "%s, file: %s, function: %s, line: %ld",
@@ -1181,6 +1185,8 @@ START_TEST(test_cjose_jwe_decrypt_rsa)
 }
 END_TEST
 
+#ifdef HAVE_RSA_PKCS1_PADDING
+
 static void _cjose_test_json_serial(const char *json, const char *match_json, cjose_jwe_recipient_t *rec)
 {
 
@@ -1194,7 +1200,7 @@ static void _cjose_test_json_serial(const char *json, const char *match_json, cj
                   err.message, err.file, err.function, err.line);
 
     size_t decoded_len;
-    char *decoded = cjose_jwe_decrypt_multi(jwe, cjose_multi_key_locator, rec, &decoded_len, &err);
+    char *decoded = (char *)cjose_jwe_decrypt_multi(jwe, cjose_multi_key_locator, rec, &decoded_len, &err);
     ck_assert_msg(NULL != decoded,
                   "failed to decrypt for multiple recipients: "
                   "%s, file: %s, function: %s, line: %ld",
@@ -1215,7 +1221,7 @@ static void _cjose_test_json_serial(const char *json, const char *match_json, cj
     cjose_jwe_release(jwe);
 }
 
-static void _cjose_test_empty_headers(cjose_jwk_t *key)
+static void _cjose_test_empty_headers(const cjose_jwk_t *key)
 {
 
     cjose_jwe_t *jwe;
@@ -1264,6 +1270,8 @@ static void _cjose_test_empty_headers(cjose_jwk_t *key)
     free(json);
     cjose_jwe_release(jwe);
 }
+
+#endif
 
 START_TEST(test_cjose_jwe_multiple_recipients)
 {
@@ -1385,7 +1393,8 @@ START_TEST(test_cjose_jwe_multiple_recipients)
                   "%s, file: %s, function: %s, line: %ld",
                   err.message, err.file, err.function, err.line);
 
-    cjose_jwe_t *jwe = cjose_jwe_encrypt_multi(rec, 2, protected_header, NULL, PLAINTEXT, strlen(PLAINTEXT) + 1, &err);
+    cjose_jwe_t *jwe
+        = cjose_jwe_encrypt_multi(rec, 2, protected_header, NULL, (const uint8_t *)PLAINTEXT, strlen(PLAINTEXT) + 1, &err);
     ck_assert_msg(NULL != jwe,
                   "failed to encrypt to multiple recipients:"
                   "%s, file: %s, function: %s, line: %ld",
@@ -1420,7 +1429,7 @@ START_TEST(test_cjose_jwe_multiple_recipients)
 
     for (int i = 0; i < 2; i++)
     {
-        cjose_jwk_release(rec[i].jwk);
+        cjose_jwk_release((cjose_jwk_t *)rec[i].jwk);
         cjose_header_release(rec[i].unprotected_header);
     }
 

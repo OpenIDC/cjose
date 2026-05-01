@@ -92,10 +92,10 @@ START_TEST(test_cjose_concatkdf_otherinfo_noextra)
     ck_assert(cjose_concatkdf_create_otherinfo(alg, 256, hdr, &otherinfo, &otherinfoLen, &err));
     actual = otherinfo;
     ck_assert(otherinfoLen == 23);
-    ck_assert(_cmp_lendata(&actual, alg, strlen(alg))); // ALG
-    ck_assert(_cmp_lendata(&actual, NULL, 0));          // APU
-    ck_assert(_cmp_lendata(&actual, NULL, 0));          // APV
-    ck_assert(_cmp_uint32(&actual, 256));               // KEYLEN
+    ck_assert(_cmp_lendata(&actual, (uint8_t *)alg, strlen(alg))); // ALG
+    ck_assert(_cmp_lendata(&actual, NULL, 0));                     // APU
+    ck_assert(_cmp_lendata(&actual, NULL, 0));                     // APV
+    ck_assert(_cmp_uint32(&actual, 256));                          // KEYLEN
 }
 END_TEST
 
@@ -103,9 +103,9 @@ START_TEST(test_cjose_concatkdf_otherinfo_apuapv)
 {
     cjose_err err;
 
-    uint8_t *apu = "expected apu";
+    uint8_t *apu = (uint8_t *)"expected apu";
     const size_t apuLen = strlen((const char *)apu);
-    uint8_t *apv = "expected apv";
+    uint8_t *apv = (uint8_t *)"expected apv";
     const size_t apvLen = strlen((const char *)apv);
     cjose_header_t *hdr = _create_otherinfo_header(apu, apuLen, apv, apvLen, &err);
     uint8_t *otherinfo = NULL;
@@ -117,7 +117,7 @@ START_TEST(test_cjose_concatkdf_otherinfo_apuapv)
     ck_assert(cjose_concatkdf_create_otherinfo(alg, 32, hdr, &otherinfo, &otherinfoLen, &err));
     actual = otherinfo;
     ck_assert(otherinfoLen == 47);
-    ck_assert(_cmp_lendata(&actual, alg, strlen(alg)));
+    ck_assert(_cmp_lendata(&actual, (uint8_t *)alg, strlen(alg)));
     ck_assert(_cmp_lendata(&actual, apu, apuLen));
     ck_assert(_cmp_lendata(&actual, apv, apvLen));
     ck_assert(_cmp_uint32(&actual, 32));
@@ -183,8 +183,8 @@ START_TEST(test_cjose_concatkdf_derive_moreinfo)
 
     const char *alg = "A256GCM";
     const size_t keylen = 32;
-    cjose_header_t *hdr
-        = _create_otherinfo_header("expected apu", strlen("expected apu"), "expected apv", strlen("expected apv"), &err);
+    cjose_header_t *hdr = _create_otherinfo_header((const uint8_t *)"expected apu", strlen("expected apu"),
+                                                   (const uint8_t *)"expected apv", strlen("expected apv"), &err);
     cjose_concatkdf_create_otherinfo(alg, keylen, hdr, &otherinfo, &otherinfoLen, &err);
     derived = cjose_concatkdf_derive(keylen, ikm, ikmLen, otherinfo, otherinfoLen, &err);
     ck_assert(NULL != derived);

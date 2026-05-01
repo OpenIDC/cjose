@@ -85,7 +85,7 @@ START_TEST(test_cjose_base64_encode)
     cjose_get_dealloc()(output);
 
     // invalid arguments -- output == NULL
-    input = "valid";
+    input = (uint8_t *)"valid";
     inlen = 5;
     output = NULL;
     outlen = 0;
@@ -95,7 +95,7 @@ START_TEST(test_cjose_base64_encode)
     ck_assert(err.code == CJOSE_ERR_INVALID_ARG);
 
     // invalid arguments -- outlen == NULL
-    input = "valid";
+    input = (uint8_t *)"valid";
     inlen = 0;
     output = NULL;
     outlen = 0;
@@ -185,7 +185,7 @@ START_TEST(test_cjose_base64url_encode)
     cjose_get_dealloc()(output);
 
     // invalid arguments -- output == NULL
-    input = "valid";
+    input = (uint8_t *)"valid";
     inlen = 0;
     output = NULL;
     outlen = 0;
@@ -195,7 +195,7 @@ START_TEST(test_cjose_base64url_encode)
     ck_assert(err.code == CJOSE_ERR_INVALID_ARG);
 
     // invalid arguments -- outlen == NULL
-    input = "valid";
+    input = (uint8_t *)"valid";
     inlen = 0;
     output = NULL;
     outlen = 0;

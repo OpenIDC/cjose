@@ -350,7 +350,7 @@ START_TEST(test_cjose_jwk_create_EC_P521_random)
 }
 END_TEST
 
-const uint8_t *OCT_KEY = "pKE-eSbyFqPdtA5WzazKFg";
+const char *OCT_KEY = "pKE-eSbyFqPdtA5WzazKFg";
 START_TEST(test_cjose_jwk_create_oct_spec)
 {
     cjose_err err;
@@ -1311,8 +1311,8 @@ START_TEST(test_cjose_jwk_hkdf)
 
     size_t ephemeral_key_len = 32;
     uint8_t *ephemeral_key = (uint8_t *)malloc(ephemeral_key_len);
-    bool ok
-        = cjose_jwk_hkdf(EVP_sha256(), (uint8_t *)"", 0, (uint8_t *)"", 0, ikm, ikm_len, ephemeral_key, ephemeral_key_len, &err);
+    bool ok = cjose_jwk_hkdf(EVP_sha256(), (uint8_t *)"", 0, (uint8_t *)"", 0, (const uint8_t *)ikm, ikm_len, ephemeral_key,
+                             ephemeral_key_len, &err);
     ck_assert_msg(ok, "Failed to compute HKDF");
 
     // the following is the expected output of HKDF with the ikm given above,

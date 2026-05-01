@@ -97,7 +97,7 @@ static void _self_sign_self_verify(const char *plain1, const char *alg, cjose_er
 
     // create the JWS
     size_t plain1_len = strlen(plain1);
-    cjose_jws_t *jws1 = cjose_jws_sign(jwk, hdr, plain1, plain1_len, err);
+    cjose_jws_t *jws1 = cjose_jws_sign(jwk, hdr, (const uint8_t *)plain1, plain1_len, err);
     ck_assert_msg(NULL != jws1,
                   "cjose_jws_sign failed: "
                   "%s, file: %s, function: %s, line: %ld",
@@ -125,9 +125,9 @@ static void _self_sign_self_verify(const char *plain1, const char *alg, cjose_er
                   err->message, err->file, err->function, err->line);
 
     // get the verified plaintext
-    uint8_t *plain2 = NULL;
+    char *plain2 = NULL;
     size_t plain2_len = 0;
-    ck_assert_msg(cjose_jws_get_plaintext(jws2, &plain2, &plain2_len, err),
+    ck_assert_msg(cjose_jws_get_plaintext(jws2, (uint8_t **)&plain2, &plain2_len, err),
                   "cjose_jws_get_plaintext failed: "
                   "%s, file: %s, function: %s, line: %ld",
                   err->message, err->file, err->function, err->line);
@@ -211,7 +211,7 @@ START_TEST(test_cjose_jws_self_sign_self_verify_many)
     {
         size_t len = random() % 1024;
         char *plain = (char *)malloc(len);
-        ck_assert_msg(RAND_bytes(plain, len) == 1, "RAND_bytes failed");
+        ck_assert_msg(RAND_bytes((unsigned char *)plain, len) == 1, "RAND_bytes failed");
         plain[len - 1] = 0;
         _self_sign_self_verify(plain, CJOSE_HDR_ALG_PS256, &err);
         _self_sign_self_verify(plain, CJOSE_HDR_ALG_PS384, &err);
@@ -263,7 +263,7 @@ START_TEST(test_cjose_jws_sign_with_bad_header)
                   err.message, err.file, err.function, err.line);
 
     // create a JWS
-    jws = cjose_jws_sign(jwk, hdr, plain, plain_len, &err);
+    jws = cjose_jws_sign(jwk, hdr, (const uint8_t *)plain, plain_len, &err);
     ck_assert_msg(NULL == jws, "cjose_jws_sign created with bad header");
     ck_assert_msg(err.code == CJOSE_ERR_INVALID_ARG, "cjose_jws_sign returned bad err.code (%i:%s)", err.code, err.message);
 
@@ -319,7 +319,7 @@ START_TEST(test_cjose_jws_sign_with_bad_key)
                       "%s, file: %s, function: %s, line: %ld",
                       err.message, err.file, err.function, err.line);
 
-        jws = cjose_jws_sign(jwk, hdr, plain, plain_len, &err);
+        jws = cjose_jws_sign(jwk, hdr, (const uint8_t *)plain, plain_len, &err);
         ck_assert_msg(NULL == jws, "cjose_jws_sign created with bad key");
         ck_assert_msg(err.code == CJOSE_ERR_INVALID_ARG, "%d cjose_jws_sign returned bad err.code (%i:%s)", i, err.code,
                       err.message);
@@ -327,7 +327,7 @@ START_TEST(test_cjose_jws_sign_with_bad_key)
         cjose_jwk_release(jwk);
     }
 
-    jws = cjose_jws_sign(NULL, hdr, plain, plain_len, &err);
+    jws = cjose_jws_sign(NULL, hdr, (const uint8_t *)plain, plain_len, &err);
     ck_assert_msg(NULL == jws, "cjose_jws_sign created with bad key");
     ck_assert_msg(err.code == CJOSE_ERR_INVALID_ARG, "cjose_jws_sign returned bad err.code (%i:%s)", err.code, err.message);
 
@@ -504,9 +504,9 @@ START_TEST(test_cjose_jws_import_get_plain_after_verify)
                   err.message, err.file, err.function, err.line);
 
     // get plaintext from imported and verified jws
-    uint8_t *plaintext = NULL;
+    char *plaintext = NULL;
     size_t plaintext_len = 0;
-    ck_assert_msg(cjose_jws_get_plaintext(jws, &plaintext, &plaintext_len, &err),
+    ck_assert_msg(cjose_jws_get_plaintext(jws, (uint8_t **)&plaintext, &plaintext_len, &err),
                   "cjose_jws_get_plaintext failed: "
                   "%s, file: %s, function: %s, line: %ld",
                   err.message, err.file, err.function, err.line);
@@ -614,9 +614,9 @@ START_TEST(test_cjose_jws_verify_hs256)
     ck_assert_msg(cjose_jws_verify(jws, jwk, &err), "cjose_jws_verify failed");
 
     // get the verified plaintext
-    uint8_t *plain = NULL;
+    char *plain = NULL;
     size_t plain_len = 0;
-    ck_assert_msg(cjose_jws_get_plaintext(jws, &plain, &plain_len, &err),
+    ck_assert_msg(cjose_jws_get_plaintext(jws, (uint8_t **)&plain, &plain_len, &err),
                   "cjose_jws_get_plaintext failed: "
                   "%s, file: %s, function: %s, line: %ld",
                   err.message, err.file, err.function, err.line);
@@ -691,9 +691,9 @@ START_TEST(test_cjose_jws_verify_rs256)
                   err.message, err.file, err.function, err.line);
 
     // get the verified plaintext
-    uint8_t *plain = NULL;
+    char *plain = NULL;
     size_t plain_len = 0;
-    ck_assert_msg(cjose_jws_get_plaintext(jws_ok, &plain, &plain_len, &err),
+    ck_assert_msg(cjose_jws_get_plaintext(jws_ok, (uint8_t **)&plain, &plain_len, &err),
                   "cjose_jws_get_plaintext failed: "
                   "%s, file: %s, function: %s, line: %ld",
                   err.message, err.file, err.function, err.line);
@@ -790,9 +790,9 @@ START_TEST(test_cjose_jws_verify_rs384)
                   err.message, err.file, err.function, err.line);
 
     // get the verified plaintext
-    uint8_t *plain = NULL;
+    char *plain = NULL;
     size_t plain_len = 0;
-    ck_assert_msg(cjose_jws_get_plaintext(jws, &plain, &plain_len, &err),
+    ck_assert_msg(cjose_jws_get_plaintext(jws, (uint8_t **)&plain, &plain_len, &err),
                   "cjose_jws_get_plaintext failed: "
                   "%s, file: %s, function: %s, line: %ld",
                   err.message, err.file, err.function, err.line);
@@ -850,9 +850,9 @@ START_TEST(test_cjose_jws_verify_ec256)
                   err.message, err.file, err.function, err.line);
 
     // get the verified plaintext
-    uint8_t *plain = NULL;
+    char *plain = NULL;
     size_t plain_len = 0;
-    ck_assert_msg(cjose_jws_get_plaintext(jws_ok, &plain, &plain_len, &err),
+    ck_assert_msg(cjose_jws_get_plaintext(jws_ok, (uint8_t **)&plain, &plain_len, &err),
                   "cjose_jws_get_plaintext failed: "
                   "%s, file: %s, function: %s, line: %ld",
                   err.message, err.file, err.function, err.line);
@@ -937,9 +937,9 @@ START_TEST(test_cjose_jws_none)
                   err.message, err.file, err.function, err.line);
 
     // get the plaintext
-    uint8_t *plain = NULL;
+    char *plain = NULL;
     size_t plain_len = 0;
-    ck_assert_msg(cjose_jws_get_plaintext(jws, &plain, &plain_len, &err),
+    ck_assert_msg(cjose_jws_get_plaintext(jws, (uint8_t **)&plain, &plain_len, &err),
                   "cjose_jws_get_plaintext failed: "
                   "%s, file: %s, function: %s, line: %ld",
                   err.message, err.file, err.function, err.line);
@@ -967,7 +967,7 @@ START_TEST(test_cjose_jws_none)
                   err.message, err.file, err.function, err.line);
 
     // try to sign the unsecured JWS
-    ck_assert_msg(!cjose_jws_sign(jwk, (cjose_header_t *)jws->hdr, PLAINTEXT, strlen(PLAINTEXT), &err),
+    ck_assert_msg(!cjose_jws_sign(jwk, (cjose_header_t *)jws->hdr, (const uint8_t *)PLAINTEXT, strlen(PLAINTEXT), &err),
                   "cjose_jws_sign succeeded for unsecured JWT");
 
     cjose_jws_release(jws);
