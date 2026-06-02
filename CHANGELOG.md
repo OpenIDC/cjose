@@ -9,7 +9,7 @@
   `alg` (A128/192/256KW, RSA-OAEP, RSA1_5) was encrypted and authenticated under an all-zero
   key, breaking confidentiality and integrity for those ciphertexts. The `dir` algorithm and
   all AES-GCM `enc` values were not affected. Adds a regression test.
-* Additional hardening from a security audit of `jwe.c` / `jwk.c`:
+* Additional hardening from a security audit of `jwe.c` / `jwk.c` / `jws.c`:
     * Fix EVP_CIPHER_CTX leak in AES-CBC content encryption on authentication-tag failure
     * Avoid NULL dereference of the optional `cjose_err` in ECDH-ES key decryption
     * Use a constant-time comparison for the multi-recipient CEK consistency check
@@ -18,6 +18,9 @@
     * Check the ephemeral-key allocation in ECDH key derivation
     * Use integer arithmetic (instead of floating-point) for the base64url length check on
       imported JWK fields
+    * Harden JWS EC signature reconstruction against allocation failures (NULL checks on
+      ECDSA_SIG_new and BN_new)
+    * Enforce the RFC 7518 minimum HMAC key length (key >= hash size) for JWS sign/verify
 
 <a name="v0.6.2.5"></a>
 ## [v0.6.2.5](https://github.com/OpenIDC/cjose/compare/v0.6.2.4...v0.6.2.5)  (2026-06-02)
