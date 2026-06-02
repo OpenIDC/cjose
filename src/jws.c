@@ -277,6 +277,13 @@ static bool _cjose_jws_build_dig_hmac_sha(cjose_jws_t *jws, const cjose_jwk_t *j
         goto _cjose_jws_build_dig_hmac_sha_cleanup;
     }
 
+    // RFC 7518 section 3.2: an HMAC key MUST be at least as long as the hash output
+    if ((jwk->keysize / 8) < (size_t)EVP_MD_size(digest_alg))
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
+        goto _cjose_jws_build_dig_hmac_sha_cleanup;
+    }
+
     if (NULL != jws->dig)
     {
         cjose_get_dealloc()(jws->dig);
