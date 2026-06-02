@@ -26,7 +26,7 @@ jobs:
             distro: ubuntu_latest
   
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: uraimo/run-on-arch-action@v3
       name: Build
       id: build
