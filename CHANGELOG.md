@@ -1,5 +1,6 @@
 # Release Notes #
 
+* Fix heap buffer overflow in AES key unwrap by validating the encrypted_key length before AES_unwrap_key
 * Fix functions that rely on nonportable malloc behaviour; closes #29; thanks @kirill-shevtsov
 * Merge fixes from cisco/cjose, see #30; thanks @bifurcation and @yasuoka:
   * Check ECDH secret allocation result; 
