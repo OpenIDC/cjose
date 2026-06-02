@@ -869,6 +869,14 @@ static bool _cjose_jwe_decrypt_ek_ecdh_es(_jwe_int_recipient_t *recipient, cjose
     uint8_t *derived = NULL;
     bool result = false;
 
+    // err is optional in the public API, but the logic below inspects
+    // err->code to distinguish an absent EPK header from a real failure;
+    // fall back to a local error object when the caller did not supply one
+    cjose_err local_err;
+    if (NULL == err)
+    {
+        err = &local_err;
+    }
     memset(err, 0, sizeof(cjose_err));
     char *epk_json = cjose_header_get_raw(jwe->hdr, CJOSE_HDR_EPK, err);
     if (NULL != epk_json)
@@ -1297,7 +1305,7 @@ static bool _cjose_jwe_encrypt_dat_aes_cbc(cjose_jwe_t *jwe, const uint8_t *plai
     uint8_t tag[EVP_MAX_MD_SIZE];
     if (_cjose_jwe_calc_auth_tag(enc, jwe, (unsigned char *)&tag, &tag_len, err) == false)
     {
-        return false;
+        goto _cjose_jwe_encrypt_dat_aes_cbc_fail;
     }
 
     // allocate buffer for the authentication tag
@@ -2207,7 +2215,8 @@ uint8_t *cjose_jwe_decrypt_multi(cjose_jwe_t *jwe, cjose_key_locator key_locator
         }
         else
         {
-            if (cek_len != jwe->cek_len || memcmp(jwe->cek, cek, cek_len))
+            // constant-time compare: both operands are secret CEKs
+            if (cek_len != jwe->cek_len || cjose_const_memcmp(jwe->cek, cek, cek_len) != 0)
             {
                 CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
                 goto _cjose_jwe_decrypt_multi_fail;
