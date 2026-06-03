@@ -135,6 +135,12 @@ uint8_t *cjose_concatkdf_derive(const size_t keylen,
         _apply_uint32(idx, counter);
 
         uint8_t *hash = cjose_get_alloc()(hashlen * sizeof(uint8_t));
+        if (NULL == hash)
+        {
+            CJOSE_ERROR(err, CJOSE_ERR_NO_MEMORY);
+            goto concatkdf_derive_finish;
+        }
+
         if (1 != EVP_DigestInit_ex(ctx, dgst, NULL) || 1 != EVP_DigestUpdate(ctx, counter, sizeof(counter))
             || 1 != EVP_DigestUpdate(ctx, ikm, ikmLen) || 1 != EVP_DigestUpdate(ctx, otherinfo, otherinfoLen)
             || 1 != EVP_DigestFinal_ex(ctx, hash, NULL))
