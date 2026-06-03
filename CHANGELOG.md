@@ -1,5 +1,14 @@
 # Release Notes #
 
+<a name="v0.6.2.7"></a>
+## [v0.6.2.7](https://github.com/OpenIDC/cjose/compare/v0.6.2.6...v0.6.2.7)  (2026-06-03)
+* Additional hardening from a security audit of `concatkdf.c` / `jwk.c` / `jws.c` / `jwe.c`:
+    * Avoid a NULL dereference of the optional `cjose_err` in ECDH-ES ConcatKDF otherinfo creation; adds a regression test
+    * Check the per-block hash allocation in `cjose_concatkdf_derive`
+    * NUL-terminate the JWK `kid` without over-reading the source buffer
+    * Cleanse the JWS HMAC digest buffer before reallocation
+    * Make the JWE content-cipher (`enc`) dispatch mutually exclusive
+
 <a name="v0.6.2.6"></a>
 ## [v0.6.2.6](https://github.com/OpenIDC/cjose/compare/v0.6.2.5...v0.6.2.6)  (2026-06-02)
 * **Security fix**: AES-CBC-HMAC JWE encryption used an all-zero content-encryption key.
