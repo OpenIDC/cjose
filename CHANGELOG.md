@@ -8,6 +8,18 @@
     * NUL-terminate the JWK `kid` without over-reading the source buffer
     * Cleanse the JWS HMAC digest buffer before reallocation
     * Make the JWE content-cipher (`enc`) dispatch mutually exclusive
+    * Cleanse the per-iteration digest buffer (derived key material) in `cjose_concatkdf_derive`
+    * Cleanse the base64url-encoded private key material on the EC and oct JWK export paths
+    * Cleanse the decrypted JWE plaintext buffer on release and reuse (incl. unauthenticated
+      plaintext left behind by a failed AES-GCM tag check)
+    * Validate the caller-supplied IV length on the JWE encrypt path (12 bytes for AES-GCM,
+      16 for AES-CBC-HMAC), mirroring the decrypt-side checks; adds a regression test
+    * Require the RSA-decrypted CEK length to match the `enc` keysize and the encrypted key
+      segment to be exactly the modulus size; adds a regression test
+    * Use `size_t` for the dot-scan offsets in `cjose_jws_import` (truncated for >2GiB input)
+    * Check the result of `json_object_set_new` in `cjose_header_set` / `cjose_header_set_raw`
+    * Bounds-check the error-message table in `cjose_err_message` and render OpenSSL error
+      strings into a thread-local buffer instead of the shared static one
 
 <a name="v0.6.2.6"></a>
 ## [v0.6.2.6](https://github.com/OpenIDC/cjose/compare/v0.6.2.5...v0.6.2.6)  (2026-06-02)
