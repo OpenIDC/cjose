@@ -2,6 +2,8 @@
  *
  */
 
+#define OPENSSL_API_COMPAT 0x10000000L
+
 #include "check_cjose.h"
 
 #include <stdlib.h>
@@ -1573,6 +1575,78 @@ START_TEST(test_cjose_jwe_encrypt_cbc_cek_random)
 }
 END_TEST
 
+// regression: the RSA key-unwrap path must reject a decrypted CEK whose length
+// does not match the CEK size dictated by the enc header; it used to accept
+// the RSA-decrypted length as-is, unlike every other decrypt_ek path
+START_TEST(test_cjose_jwe_decrypt_rsa_wrong_cek_length)
+{
+    cjose_err err;
+
+    cjose_jwk_t *jwk = cjose_jwk_import(JWK_RSA, strlen(JWK_RSA), &err);
+    ck_assert_msg(NULL != jwk, "cjose_jwk_import failed: %s", err.message);
+
+    cjose_header_t *hdr = cjose_header_new(&err);
+    ck_assert(cjose_header_set(hdr, CJOSE_HDR_ALG, CJOSE_HDR_ALG_RSA_OAEP, &err));
+    ck_assert(cjose_header_set(hdr, CJOSE_HDR_ENC, CJOSE_HDR_ENC_A128GCM, &err));
+
+    const char *plain = "Setec Astronomy";
+    cjose_jwe_t *jwe = cjose_jwe_encrypt(jwk, hdr, (const uint8_t *)plain, strlen(plain), &err);
+    ck_assert_msg(NULL != jwe, "cjose_jwe_encrypt failed: %s", err.message);
+
+    char *compact = cjose_jwe_export(jwe, &err);
+    ck_assert_msg(NULL != compact, "cjose_jwe_export failed: %s", err.message);
+
+    // RSA-OAEP-encrypt a CEK of the wrong length with the same public key
+    // (8 bytes instead of the 16 bytes A128GCM requires)
+    uint8_t bad_cek[8];
+    memset(bad_cek, 0x42, sizeof(bad_cek));
+    RSA *rsa = (RSA *)jwk->keydata;
+    int ek_len = RSA_size(rsa);
+    uint8_t *ek = (uint8_t *)malloc(ek_len);
+    ck_assert(NULL != ek);
+    ck_assert(RSA_public_encrypt(sizeof(bad_cek), bad_cek, ek, rsa, RSA_PKCS1_OAEP_PADDING) == ek_len);
+
+    char *ek_b64u = NULL;
+    size_t ek_b64u_len = 0;
+    ck_assert(cjose_base64url_encode(ek, ek_len, &ek_b64u, &ek_b64u_len, &err));
+
+    // splice the wrong-length encrypted CEK into the compact serialization
+    char *first_dot = strchr(compact, '.');
+    ck_assert(NULL != first_dot);
+    char *second_dot = strchr(first_dot + 1, '.');
+    ck_assert(NULL != second_dot);
+
+    size_t header_len = first_dot - compact;
+    size_t tail_len = strlen(second_dot);
+    size_t tampered_len = header_len + 1 + ek_b64u_len + tail_len;
+    char *tampered = (char *)malloc(tampered_len + 1);
+    ck_assert(NULL != tampered);
+    memcpy(tampered, compact, header_len);
+    tampered[header_len] = '.';
+    memcpy(tampered + header_len + 1, ek_b64u, ek_b64u_len);
+    memcpy(tampered + header_len + 1 + ek_b64u_len, second_dot, tail_len);
+    tampered[tampered_len] = '\0';
+
+    // import must succeed; decryption must fail on the CEK length mismatch
+    cjose_jwe_t *jwe_bad = cjose_jwe_import(tampered, tampered_len, &err);
+    ck_assert_msg(NULL != jwe_bad, "cjose_jwe_import failed: %s", err.message);
+
+    size_t plain_len = 0;
+    uint8_t *decrypted = cjose_jwe_decrypt(jwe_bad, jwk, &plain_len, &err);
+    ck_assert_msg(NULL == decrypted, "cjose_jwe_decrypt succeeded on a wrong-length CEK");
+    ck_assert_msg(CJOSE_ERR_CRYPTO == err.code, "expected CJOSE_ERR_CRYPTO, got %d", err.code);
+
+    free(tampered);
+    free(ek);
+    cjose_get_dealloc()(ek_b64u);
+    cjose_get_dealloc()(compact);
+    cjose_jwe_release(jwe_bad);
+    cjose_jwe_release(jwe);
+    cjose_header_release(hdr);
+    cjose_jwk_release(jwk);
+}
+END_TEST
+
 // regression: the encrypt path must reject a caller-supplied IV whose length
 // does not match the content-encryption algorithm (12 bytes for AES-GCM, 16
 // bytes for AES-CBC-HMAC); it used to hand the buffer to OpenSSL, which reads
@@ -1673,6 +1747,7 @@ Suite *cjose_jwe_suite(void)
     tcase_add_test(tc_jwe, test_cjose_jwe_decrypt_bad_params);
     tcase_add_test(tc_jwe, test_cjose_jwe_multiple_recipients);
     tcase_add_test(tc_jwe, test_cjose_jwe_encrypt_cbc_cek_random);
+    tcase_add_test(tc_jwe, test_cjose_jwe_decrypt_rsa_wrong_cek_length);
     tcase_add_test(tc_jwe, test_cjose_jwe_encrypt_iv_bad_length);
     tcase_add_test(tc_jwe, test_cjose_jwe_ecdh_es_null_err);
     suite_add_tcase(suite, tc_jwe);
