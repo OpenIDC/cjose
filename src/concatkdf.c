@@ -145,14 +145,16 @@ uint8_t *cjose_concatkdf_derive(const size_t keylen,
             || 1 != EVP_DigestUpdate(ctx, ikm, ikmLen) || 1 != EVP_DigestUpdate(ctx, otherinfo, otherinfoLen)
             || 1 != EVP_DigestFinal_ex(ctx, hash, NULL))
         {
-            cjose_get_dealloc()(hash);
+            _cjose_cleanse_dealloc(hash, hashlen);
             CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
             goto concatkdf_derive_finish;
         }
 
+        // hash holds a full digest block of derived key material; wipe it
+        // before returning the buffer to the allocator
         uint8_t *ptr = buffer + offset;
         memcpy(ptr, hash, min_len(hashlen, amt));
-        cjose_get_dealloc()(hash);
+        _cjose_cleanse_dealloc(hash, hashlen);
         offset += hashlen;
         amt -= hashlen;
     }
