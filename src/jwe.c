@@ -1057,6 +1057,15 @@ static bool _cjose_jwe_encrypt_dat_aes_gcm(cjose_jwe_t *jwe, const uint8_t *plai
     }
     EVP_CIPHER_CTX_init(ctx);
 
+    // AES GCM requires a 96-bit IV; enforce this before EVP_EncryptInit_ex,
+    // which reads a fixed 12 bytes from a possibly shorter caller-supplied IV
+    // (mirrors the corresponding check on the decrypt path)
+    if (jwe->enc_iv.raw_len != 12)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
+        goto _cjose_jwe_encrypt_dat_fail;
+    }
+
     // initialize context for encryption using AES GCM cipher and CEK and IV
     if (EVP_EncryptInit_ex(ctx, cipher, NULL, jwe->cek, jwe->enc_iv.raw) != 1)
     {
@@ -1260,6 +1269,15 @@ static bool _cjose_jwe_encrypt_dat_aes_cbc(cjose_jwe_t *jwe, const uint8_t *plai
         goto _cjose_jwe_encrypt_dat_aes_cbc_fail;
     }
     EVP_CIPHER_CTX_init(ctx);
+
+    // AES CBC requires a block-sized IV; enforce this before EVP_EncryptInit_ex,
+    // which reads a fixed 16 bytes from a possibly shorter caller-supplied IV
+    // (mirrors the corresponding check on the decrypt path)
+    if (jwe->enc_iv.raw_len != AES_BLOCK_SIZE)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
+        goto _cjose_jwe_encrypt_dat_aes_cbc_fail;
+    }
 
     // initialize context for decryption using the cipher, the 2nd half of the CEK and the IV
     if (EVP_EncryptInit_ex(ctx, cipher, NULL, jwe->cek + jwe->cek_len / 2, jwe->enc_iv.raw) != 1)

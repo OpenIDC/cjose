@@ -1573,6 +1573,42 @@ START_TEST(test_cjose_jwe_encrypt_cbc_cek_random)
 }
 END_TEST
 
+// regression: the encrypt path must reject a caller-supplied IV whose length
+// does not match the content-encryption algorithm (12 bytes for AES-GCM, 16
+// bytes for AES-CBC-HMAC); it used to hand the buffer to OpenSSL, which reads
+// a fixed-size IV and would read past the end of a shorter buffer
+static void _encrypt_with_bad_iv_length(const char *alg, const char *enc, const char *key, size_t iv_len)
+{
+    cjose_err err;
+
+    cjose_jwk_t *jwk = cjose_jwk_import(key, strlen(key), &err);
+    ck_assert_msg(NULL != jwk, "cjose_jwk_import failed: %s", err.message);
+
+    cjose_header_t *hdr = cjose_header_new(&err);
+    ck_assert(cjose_header_set(hdr, CJOSE_HDR_ALG, alg, &err));
+    ck_assert(cjose_header_set(hdr, CJOSE_HDR_ENC, enc, &err));
+
+    uint8_t iv[64];
+    ck_assert(iv_len <= sizeof(iv));
+    memset(iv, 0xA5, sizeof(iv));
+
+    cjose_jwe_t *jwe = cjose_jwe_encrypt_iv(jwk, hdr, iv, iv_len, (const uint8_t *)PLAINTEXT, strlen(PLAINTEXT), &err);
+    ck_assert_msg(NULL == jwe, "cjose_jwe_encrypt_iv succeeded with a %zu-byte IV for enc %s", iv_len, enc);
+    ck_assert_msg(CJOSE_ERR_INVALID_ARG == err.code, "expected CJOSE_ERR_INVALID_ARG, got %d for enc %s", err.code, enc);
+
+    cjose_header_release(hdr);
+    cjose_jwk_release(jwk);
+}
+
+START_TEST(test_cjose_jwe_encrypt_iv_bad_length)
+{
+    _encrypt_with_bad_iv_length(CJOSE_HDR_ALG_DIR, CJOSE_HDR_ENC_A256GCM, JWK_OCT_32, 8);
+    _encrypt_with_bad_iv_length(CJOSE_HDR_ALG_DIR, CJOSE_HDR_ENC_A256GCM, JWK_OCT_32, 16);
+    _encrypt_with_bad_iv_length(CJOSE_HDR_ALG_DIR, CJOSE_HDR_ENC_A128CBC_HS256, JWK_OCT_32, 8);
+    _encrypt_with_bad_iv_length(CJOSE_HDR_ALG_DIR, CJOSE_HDR_ENC_A128CBC_HS256, JWK_OCT_32, 12);
+}
+END_TEST
+
 // regression: ECDH-ES key agreement must not dereference a NULL cjose_err.
 // cjose_concatkdf_create_otherinfo() used to memset(err, ...) unconditionally,
 // crashing when the public JWE API was invoked with a NULL err argument.
@@ -1637,6 +1673,7 @@ Suite *cjose_jwe_suite(void)
     tcase_add_test(tc_jwe, test_cjose_jwe_decrypt_bad_params);
     tcase_add_test(tc_jwe, test_cjose_jwe_multiple_recipients);
     tcase_add_test(tc_jwe, test_cjose_jwe_encrypt_cbc_cek_random);
+    tcase_add_test(tc_jwe, test_cjose_jwe_encrypt_iv_bad_length);
     tcase_add_test(tc_jwe, test_cjose_jwe_ecdh_es_null_err);
     suite_add_tcase(suite, tc_jwe);
 
