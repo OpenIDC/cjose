@@ -50,10 +50,16 @@ bool cjose_concatkdf_create_otherinfo(
     uint8_t *apu = NULL, *apv = NULL;
     size_t apuLen = 0, apvLen = 0;
 
-    memset(err, 0, sizeof(cjose_err));
+    // err is optional and may be NULL, so only dereference it when provided.
+    // cjose_header_get() records an error only for an invalid header/attr; for a
+    // valid hdr and the constant APU/APV attrs an absent field just yields NULL.
+    if (NULL != err)
+    {
+        memset(err, 0, sizeof(cjose_err));
+    }
     const char *apuStr = cjose_header_get(hdr, CJOSE_HDR_APU, err);
     const char *apvStr = cjose_header_get(hdr, CJOSE_HDR_APV, err);
-    if (CJOSE_ERR_NONE != err->code)
+    if (NULL != err && CJOSE_ERR_NONE != err->code)
     {
         return false;
     }
@@ -122,27 +128,36 @@ uint8_t *cjose_concatkdf_derive(const size_t keylen,
         goto concatkdf_derive_finish;
     }
 
-    size_t offset = 0, amt = keylen;
+    size_t offset = 0;
     for (int idx = 1; N >= idx; idx++)
     {
         uint8_t counter[4];
         _apply_uint32(idx, counter);
 
         uint8_t *hash = cjose_get_alloc()(hashlen * sizeof(uint8_t));
+        if (NULL == hash)
+        {
+            CJOSE_ERROR(err, CJOSE_ERR_NO_MEMORY);
+            goto concatkdf_derive_finish;
+        }
+
         if (1 != EVP_DigestInit_ex(ctx, dgst, NULL) || 1 != EVP_DigestUpdate(ctx, counter, sizeof(counter))
             || 1 != EVP_DigestUpdate(ctx, ikm, ikmLen) || 1 != EVP_DigestUpdate(ctx, otherinfo, otherinfoLen)
             || 1 != EVP_DigestFinal_ex(ctx, hash, NULL))
         {
-            cjose_get_dealloc()(hash);
+            _cjose_cleanse_dealloc(hash, hashlen);
             CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
             goto concatkdf_derive_finish;
         }
 
-        uint8_t *ptr = buffer + offset;
-        memcpy(ptr, hash, min_len(hashlen, amt));
-        cjose_get_dealloc()(hash);
+        // copy this digest block into the derived key; the final block may be
+        // shorter than hashlen. offset stays < keylen on every iteration, so the
+        // remaining count (keylen - offset) cannot underflow.
+        // hash holds derived key material; wipe it before returning to the allocator
+        size_t amt = keylen - offset;
+        memcpy(buffer + offset, hash, min_len(hashlen, amt));
+        _cjose_cleanse_dealloc(hash, hashlen);
         offset += hashlen;
-        amt -= hashlen;
     }
 
     derived = buffer;

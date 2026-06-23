@@ -1,5 +1,33 @@
 # Release Notes #
 
+<a name="v0.6.2.7"></a>
+## [v0.6.2.7](https://github.com/OpenIDC/cjose/compare/v0.6.2.6...v0.6.2.7)  (2026-06-03)
+* Additional hardening from a security audit of `concatkdf.c` / `jwk.c` / `jws.c` / `jwe.c`:
+    * Avoid a NULL dereference of the optional `cjose_err` in ECDH-ES ConcatKDF otherinfo creation; adds a regression test
+    * Check the per-block hash allocation in `cjose_concatkdf_derive`
+    * NUL-terminate the JWK `kid` without over-reading the source buffer
+    * Cleanse the JWS HMAC digest buffer before reallocation
+    * Make the JWE content-cipher (`enc`) dispatch mutually exclusive
+    * Cleanse the per-iteration digest buffer (derived key material) in `cjose_concatkdf_derive`
+    * Cleanse the base64url-encoded private key material on the EC and oct JWK export paths
+    * Cleanse the decrypted JWE plaintext buffer on release and reuse (incl. unauthenticated
+      plaintext left behind by a failed AES-GCM tag check)
+    * Validate the caller-supplied IV length on the JWE encrypt path (12 bytes for AES-GCM,
+      16 for AES-CBC-HMAC), mirroring the decrypt-side checks; adds a regression test
+    * Require the RSA-decrypted CEK length to match the `enc` keysize and the encrypted key
+      segment to be exactly the modulus size; adds a regression test
+    * Use `size_t` for the dot-scan offsets in `cjose_jws_import` (truncated for >2GiB input)
+    * Check the result of `json_object_set_new` in `cjose_header_set` / `cjose_header_set_raw`
+    * Bounds-check the error-message table in `cjose_err_message` and render OpenSSL error
+      strings into a thread-local buffer instead of the shared static one
+    * Validate the JWS ECDSA signature length against the key's curve before splitting it into
+      R || S, rejecting non-canonical (e.g. trailing-byte-padded) signatures that the
+      `sig_len / 2` split would otherwise accept (RFC 7518 section 3.4); adds a regression test
+    * Avoid an unsigned underflow of the remaining-bytes counter on the final block of
+      `cjose_concatkdf_derive`
+    * Make the JWE CEK key-size (`enc`) selection mutually exclusive and reject an unrecognized
+      `enc` instead of deriving a zero-length CEK
+
 <a name="v0.6.2.6"></a>
 ## [v0.6.2.6](https://github.com/OpenIDC/cjose/compare/v0.6.2.5...v0.6.2.6)  (2026-06-02)
 * **Security fix**: AES-CBC-HMAC JWE encryption used an all-zero content-encryption key.

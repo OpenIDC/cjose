@@ -262,7 +262,11 @@ bool cjose_jwk_set_kid(cjose_jwk_t *jwk, const char *kid, size_t len, cjose_err 
         CJOSE_ERROR(err, CJOSE_ERR_NO_MEMORY);
         return false;
     }
-    strncpy(jwk->kid, kid, len + 1);
+    // copy exactly len bytes from the caller-supplied (length-delimited, not
+    // necessarily NUL-terminated) kid and terminate ourselves; strncpy(len + 1)
+    // would read one byte past kid and could leave jwk->kid unterminated.
+    memcpy(jwk->kid, kid, len);
+    jwk->kid[len] = '\0';
     return true;
 }
 
@@ -407,7 +411,8 @@ static bool _oct_private_fields(const cjose_jwk_t *jwk, json_t *json, cjose_err 
     }
 
     field = _cjose_json_stringn(k, klen, err);
-    cjose_get_dealloc()(k);
+    // k holds the base64url-encoded symmetric key; wipe it before release
+    _cjose_cleanse_dealloc(k, klen);
     k = NULL;
     if (!field)
     {
@@ -803,15 +808,13 @@ static bool _EC_private_fields(const cjose_jwk_t *jwk, json_t *json, cjose_err *
     json_object_set(json, "d", field);
     json_decref(field);
     field = NULL;
-    cjose_get_dealloc()(b64u);
-    b64u = NULL;
 
     result = true;
 
 _ec_to_string_cleanup:
     // buffer and b64u hold the raw / base64url-encoded private key 'd';
-    // wipe them before release (b64u is also leaked here without this on
-    // the _cjose_json_stringn failure path)
+    // wipe them before release on the success path as well as the
+    // _cjose_json_stringn failure path (where b64u would otherwise leak)
     _cjose_cleanse_dealloc(buffer, numsize);
     _cjose_cleanse_dealloc(b64u, len);
 

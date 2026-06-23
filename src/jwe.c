@@ -295,7 +295,7 @@ static bool _cjose_jwe_validate_enc(cjose_jwe_t *jwe, cjose_header_t *protected_
         jwe->fns.encrypt_dat = _cjose_jwe_encrypt_dat_aes_gcm;
         jwe->fns.decrypt_dat = _cjose_jwe_decrypt_dat_aes_gcm;
     }
-    if ((strcmp(enc, CJOSE_HDR_ENC_A128CBC_HS256) == 0) || (strcmp(enc, CJOSE_HDR_ENC_A192CBC_HS384) == 0)
+    else if ((strcmp(enc, CJOSE_HDR_ENC_A128CBC_HS256) == 0) || (strcmp(enc, CJOSE_HDR_ENC_A192CBC_HS384) == 0)
         || (strcmp(enc, CJOSE_HDR_ENC_A256CBC_HS512) == 0))
     {
         jwe->fns.set_cek = _cjose_jwe_set_cek_aes_cbc;
@@ -413,10 +413,17 @@ static bool _cjose_jwe_set_cek_aes_gcm(cjose_jwe_t *jwe, const cjose_jwk_t *jwk,
     size_t keysize = 0;
     if (strcmp(enc, CJOSE_HDR_ENC_A128GCM) == 0)
         keysize = 16;
-    if (strcmp(enc, CJOSE_HDR_ENC_A192GCM) == 0)
+    else if (strcmp(enc, CJOSE_HDR_ENC_A192GCM) == 0)
         keysize = 24;
-    if (strcmp(enc, CJOSE_HDR_ENC_A256GCM) == 0)
+    else if (strcmp(enc, CJOSE_HDR_ENC_A256GCM) == 0)
         keysize = 32;
+
+    // reject an unrecognized enc rather than proceeding with a zero-length CEK
+    if (0 == keysize)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
+        return false;
+    }
 
     // if no JWK is provided, generate a random key
     if (NULL == jwk)
@@ -472,10 +479,17 @@ static bool _cjose_jwe_set_cek_aes_cbc(cjose_jwe_t *jwe, const cjose_jwk_t *jwk,
     size_t keysize = 0;
     if (strcmp(enc, CJOSE_HDR_ENC_A128CBC_HS256) == 0)
         keysize = 32;
-    if (strcmp(enc, CJOSE_HDR_ENC_A192CBC_HS384) == 0)
+    else if (strcmp(enc, CJOSE_HDR_ENC_A192CBC_HS384) == 0)
         keysize = 48;
-    if (strcmp(enc, CJOSE_HDR_ENC_A256CBC_HS512) == 0)
+    else if (strcmp(enc, CJOSE_HDR_ENC_A256CBC_HS512) == 0)
         keysize = 64;
+
+    // reject an unrecognized enc rather than proceeding with a zero-length CEK
+    if (0 == keysize)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
+        return false;
+    }
 
     // if no JWK is provided, generate a random key
     if (NULL == jwk)
@@ -720,11 +734,20 @@ static bool _cjose_jwe_decrypt_ek_rsa_padding(
         return false;
     }
 
-    // we don't know the size of the key to expect, but must be < RSA_size
+    // pin the expected CEK length from the enc header; like the other
+    // decrypt_ek paths the RSA-decrypted key must match it exactly
     _cjose_release_cek(&jwe->cek, jwe->cek_len);
-    size_t buflen = RSA_size((RSA *)jwk->keydata);
-    if (!_cjose_jwe_malloc(buflen, false, &jwe->cek, err))
+    if (!jwe->fns.set_cek(jwe, NULL, false, err))
     {
+        return false;
+    }
+
+    // a valid RSA encrypted key segment is exactly the size of the modulus;
+    // reject other lengths before they reach RSA_private_decrypt
+    size_t buflen = RSA_size((RSA *)jwk->keydata);
+    if (recipient->enc_key.raw_len != buflen)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
         return false;
     }
 
@@ -738,15 +761,26 @@ static bool _cjose_jwe_decrypt_ek_rsa_padding(
     }
 #endif // HAVE_RSA_PKCS1_PADDING
 
-    // decrypt the CEK using RSA v1.5 or OAEP padding
-    int len = RSA_private_decrypt(recipient->enc_key.raw_len, recipient->enc_key.raw, jwe->cek, (RSA *)jwk->keydata, padding);
-    if (-1 == len)
+    // decrypt into a scratch buffer; the recovered plaintext can be up to
+    // RSA_size bytes, larger than the pinned CEK buffer
+    uint8_t *buf = NULL;
+    if (!_cjose_jwe_malloc(buflen, false, &buf, err))
     {
+        return false;
+    }
+
+    // decrypt the CEK using RSA v1.5 or OAEP padding and require that its
+    // length matches the CEK size dictated by the enc header (RFC 7518 sec 4.2/4.3)
+    int len = RSA_private_decrypt(recipient->enc_key.raw_len, recipient->enc_key.raw, buf, (RSA *)jwk->keydata, padding);
+    if (-1 == len || (size_t)len != jwe->cek_len)
+    {
+        _cjose_cleanse_dealloc(buf, buflen);
         CJOSE_ERROR(err, CJOSE_ERR_CRYPTO);
         return false;
     }
 
-    jwe->cek_len = len;
+    memcpy(jwe->cek, buf, jwe->cek_len);
+    _cjose_cleanse_dealloc(buf, buflen);
 
     return true;
 }
@@ -1057,6 +1091,15 @@ static bool _cjose_jwe_encrypt_dat_aes_gcm(cjose_jwe_t *jwe, const uint8_t *plai
     }
     EVP_CIPHER_CTX_init(ctx);
 
+    // AES GCM requires a 96-bit IV; enforce this before EVP_EncryptInit_ex,
+    // which reads a fixed 12 bytes from a possibly shorter caller-supplied IV
+    // (mirrors the corresponding check on the decrypt path)
+    if (jwe->enc_iv.raw_len != 12)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
+        goto _cjose_jwe_encrypt_dat_fail;
+    }
+
     // initialize context for encryption using AES GCM cipher and CEK and IV
     if (EVP_EncryptInit_ex(ctx, cipher, NULL, jwe->cek, jwe->enc_iv.raw) != 1)
     {
@@ -1261,6 +1304,15 @@ static bool _cjose_jwe_encrypt_dat_aes_cbc(cjose_jwe_t *jwe, const uint8_t *plai
     }
     EVP_CIPHER_CTX_init(ctx);
 
+    // AES CBC requires a block-sized IV; enforce this before EVP_EncryptInit_ex,
+    // which reads a fixed 16 bytes from a possibly shorter caller-supplied IV
+    // (mirrors the corresponding check on the decrypt path)
+    if (jwe->enc_iv.raw_len != AES_BLOCK_SIZE)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
+        goto _cjose_jwe_encrypt_dat_aes_cbc_fail;
+    }
+
     // initialize context for decryption using the cipher, the 2nd half of the CEK and the IV
     if (EVP_EncryptInit_ex(ctx, cipher, NULL, jwe->cek + jwe->cek_len / 2, jwe->enc_iv.raw) != 1)
     {
@@ -1404,8 +1456,8 @@ static bool _cjose_jwe_decrypt_dat_aes_gcm(cjose_jwe_t *jwe, cjose_err *err)
         goto _cjose_jwe_decrypt_dat_aes_gcm_fail;
     }
 
-    // allocate buffer for the plaintext
-    cjose_get_dealloc()(jwe->dat);
+    // allocate buffer for the plaintext, wiping any previously decrypted data
+    _cjose_cleanse_dealloc(jwe->dat, jwe->dat_len);
     jwe->dat_len = jwe->enc_ct.raw_len;
     if (!_cjose_jwe_malloc(jwe->dat_len, false, &jwe->dat, err))
     {
@@ -1518,7 +1570,7 @@ static bool _cjose_jwe_decrypt_dat_aes_cbc(cjose_jwe_t *jwe, cjose_err *err)
     }
 
     int p_len = (int)jwe->enc_ct.raw_len, f_len = 0;
-    cjose_get_dealloc()(jwe->dat);
+    _cjose_cleanse_dealloc(jwe->dat, jwe->dat_len);
     jwe->dat_len = p_len + AES_BLOCK_SIZE;
     if (!_cjose_jwe_malloc(jwe->dat_len, false, &jwe->dat, err))
     {
@@ -1770,7 +1822,9 @@ void cjose_jwe_release(cjose_jwe_t *jwe)
 
     _cjose_release_cek(&jwe->cek, jwe->cek_len);
 
-    cjose_get_dealloc()(jwe->dat);
+    // jwe->dat holds decrypted plaintext when the caller has not taken
+    // ownership of it (e.g. after a failed decrypt); wipe it before release
+    _cjose_cleanse_dealloc(jwe->dat, jwe->dat_len);
     cjose_get_dealloc()(jwe);
 }
 

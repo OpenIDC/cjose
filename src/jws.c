@@ -286,7 +286,7 @@ static bool _cjose_jws_build_dig_hmac_sha(cjose_jws_t *jws, const cjose_jwk_t *j
 
     if (NULL != jws->dig)
     {
-        cjose_get_dealloc()(jws->dig);
+        _cjose_cleanse_dealloc(jws->dig, jws->dig_len);
         jws->dig = NULL;
     }
 
@@ -801,10 +801,11 @@ cjose_jws_t *cjose_jws_import(const char *cser, size_t cser_len, cjose_err *err)
     }
     memset(jws, 0, sizeof(cjose_jws_t));
 
-    // find the indexes of the dots
-    int idx = 0;
-    int d[2] = { 0, 0 };
-    for (int i = 0; i < cser_len && idx < 2; ++i)
+    // find the indexes of the dots; use size_t to match cser_len, an int
+    // would truncate the offsets for an oversized serialization
+    size_t idx = 0;
+    size_t d[2] = { 0, 0 };
+    for (size_t i = 0; i < cser_len && idx < 2; ++i)
     {
         if (cser[i] == '.')
         {
@@ -1059,6 +1060,32 @@ static bool _cjose_jws_verify_sig_ec(cjose_jws_t *jws, const cjose_jwk_t *jwk, c
 
     ec_keydata *keydata = (ec_keydata *)jwk->keydata;
     EC_KEY *ec = keydata->key;
+
+    // the JWS ECDSA signature is the fixed-length concatenation R || S, each
+    // the curve's coordinate size (RFC 7518 section 3.4); reject any other
+    // length before splitting it so a non-canonical signature (e.g. a trailing
+    // byte dropped by the sig_len/2 split) cannot verify
+    size_t coordlen = 0;
+    switch (keydata->crv)
+    {
+    case CJOSE_JWK_EC_P_256:
+        coordlen = 32;
+        break;
+    case CJOSE_JWK_EC_P_384:
+        coordlen = 48;
+        break;
+    case CJOSE_JWK_EC_P_521:
+        coordlen = 66;
+        break;
+    case CJOSE_JWK_EC_INVALID:
+        coordlen = 0;
+        break;
+    }
+    if (0 == coordlen || jws->sig_len != coordlen * 2)
+    {
+        CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
+        return false;
+    }
 
     ECDSA_SIG *ecdsa_sig = ECDSA_SIG_new();
     if (ecdsa_sig == NULL)
