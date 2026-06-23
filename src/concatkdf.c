@@ -128,7 +128,7 @@ uint8_t *cjose_concatkdf_derive(const size_t keylen,
         goto concatkdf_derive_finish;
     }
 
-    size_t offset = 0, amt = keylen;
+    size_t offset = 0;
     for (int idx = 1; N >= idx; idx++)
     {
         uint8_t counter[4];
@@ -150,13 +150,14 @@ uint8_t *cjose_concatkdf_derive(const size_t keylen,
             goto concatkdf_derive_finish;
         }
 
-        // hash holds a full digest block of derived key material; wipe it
-        // before returning the buffer to the allocator
-        uint8_t *ptr = buffer + offset;
-        memcpy(ptr, hash, min_len(hashlen, amt));
+        // copy this digest block into the derived key; the final block may be
+        // shorter than hashlen. offset stays < keylen on every iteration, so the
+        // remaining count (keylen - offset) cannot underflow.
+        // hash holds derived key material; wipe it before returning to the allocator
+        size_t amt = keylen - offset;
+        memcpy(buffer + offset, hash, min_len(hashlen, amt));
         _cjose_cleanse_dealloc(hash, hashlen);
         offset += hashlen;
-        amt -= hashlen;
     }
 
     derived = buffer;
