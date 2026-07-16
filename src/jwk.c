@@ -1253,10 +1253,14 @@ cjose_jwk_t *cjose_jwk_create_RSA_spec(const cjose_jwk_rsa_keyspec *spec, cjose_
 
     // RFC 7518 §3.3 requires minimum 2048-bit RSA modulus for RS*/PS*/RSA-OAEP/RSA1_5
     BIGNUM *n_bn = BN_bin2bn(spec->n, spec->nlen, NULL);
-    if (NULL == n_bn || BN_num_bits(n_bn) < 2048)
+    if (NULL == n_bn)
     {
-        if (n_bn)
-            BN_free(n_bn);
+        CJOSE_ERROR(err, CJOSE_ERR_NO_MEMORY);
+        return NULL;
+    }
+    if (BN_num_bits(n_bn) < 2048)
+    {
+        BN_free(n_bn);
         CJOSE_ERROR(err, CJOSE_ERR_INVALID_ARG);
         return NULL;
     }

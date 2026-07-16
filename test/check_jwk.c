@@ -1471,8 +1471,8 @@ START_TEST(test_cjose_jwk_create_RSA_spec_weak_modulus)
 
     // Test that 512-bit RSA modulus is rejected
     memset(&spec, 0, sizeof(cjose_jwk_rsa_keyspec));
-    cjose_base64url_decode(RSA_512_e, strlen(RSA_512_e), &spec.e, &spec.elen, &err);
-    cjose_base64url_decode(RSA_512_n, strlen(RSA_512_n), &spec.n, &spec.nlen, &err);
+    ck_assert(cjose_base64url_decode(RSA_512_e, strlen(RSA_512_e), &spec.e, &spec.elen, &err));
+    ck_assert(cjose_base64url_decode(RSA_512_n, strlen(RSA_512_n), &spec.n, &spec.nlen, &err));
 
     jwk = cjose_jwk_create_RSA_spec(&spec, &err);
     ck_assert_msg(NULL == jwk, "expected NULL for 512-bit RSA modulus, but got a cjose_jwk_t");
@@ -1484,8 +1484,8 @@ START_TEST(test_cjose_jwk_create_RSA_spec_weak_modulus)
 
     // Test that 2048-bit RSA modulus (existing test data) is accepted
     memset(&spec, 0, sizeof(cjose_jwk_rsa_keyspec));
-    cjose_base64url_decode(RSA_e, strlen(RSA_e), &spec.e, &spec.elen, &err);
-    cjose_base64url_decode(RSA_n, strlen(RSA_n), &spec.n, &spec.nlen, &err);
+    ck_assert(cjose_base64url_decode(RSA_e, strlen(RSA_e), &spec.e, &spec.elen, &err));
+    ck_assert(cjose_base64url_decode(RSA_n, strlen(RSA_n), &spec.n, &spec.nlen, &err));
 
     jwk = cjose_jwk_create_RSA_spec(&spec, &err);
     ck_assert_msg(NULL != jwk, "expected a cjose_jwk_t for 2048-bit RSA modulus, but got NULL");
