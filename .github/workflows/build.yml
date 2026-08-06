@@ -5,12 +5,22 @@ on: [push, pull_request]
 jobs:
   build:
     runs-on: ubuntu-latest
+    name: Build with ${{ matrix.cc }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        cc: [gcc, clang]
+
+    env:
+      CC: ${{ matrix.cc }}
+
     steps:
     - uses: actions/checkout@v5
     - name: Dependencies
       run: |
         sudo apt-get update -y
-        sudo apt-get install -y pkg-config make gcc valgrind autoconf automake libtool
+        sudo apt-get install -y pkg-config make ${{ matrix.cc }} valgrind autoconf automake libtool
         sudo apt-get install -y libssl-dev libjansson-dev check
     - name: Configure
       run: |
@@ -21,6 +31,7 @@ jobs:
     - name: Test
       run: make check || { cat test/test-suite.log && (exit -1) }
     - name: Valgrind
+      if: matrix.cc == 'gcc'
       env:
         CK_FORK: no
       run: |
