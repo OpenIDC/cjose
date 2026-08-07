@@ -1,5 +1,13 @@
 # Release Notes #
 
+<a name="v0.6.2.8"></a>
+## [v0.6.2.8](https://github.com/OpenIDC/cjose/compare/v0.6.2.7...v0.6.2.8)  (2026-08-07)
+* **Build fix**: initialize the decoded buffer lengths up front in the JWK import error paths;
+  reading them uninitialized broke the clang `-Werror` build since v0.6.2.6
+  (https://github.com/OpenIDC/cjose/pull/32); thanks @kraj
+* Use a portable thread-local storage specifier in `error.c` so the OpenSSL error buffer builds
+  with MSVC.
+
 <a name="v0.6.2.7"></a>
 ## [v0.6.2.7](https://github.com/OpenIDC/cjose/compare/v0.6.2.6...v0.6.2.7)  (2026-06-03)
 * Additional hardening from a security audit of `concatkdf.c` / `jwk.c` / `jws.c` / `jwe.c`:
