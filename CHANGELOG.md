@@ -12,6 +12,8 @@
       import (OpenSSL >= 1.1) instead of silently dropping and leaking them; adds a regression test
     * Take the JWS import copy-helper length as `size_t` so the (deliberately `size_t`) compact
       serialization dot-scan offsets are no longer truncated back through `int`
+    * Parse the shared `"unprotected"` header in `cjose_jwe_import_json` (it was silently dropped),
+      restoring symmetry with `cjose_jwe_export_json`
 
 <a name="v0.6.2.7"></a>
 ## [v0.6.2.7](https://github.com/OpenIDC/cjose/compare/v0.6.2.6...v0.6.2.7)  (2026-06-03)
