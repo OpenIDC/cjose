@@ -34,6 +34,8 @@
       (currently unreachable) failure path cannot leave `*output` dangling at freed memory
     * Lower-bound the `kty` argument in `cjose_jwk_name_for_kty` so a value below `CJOSE_JWK_KTY_RSA`
       cannot index the key-type name table out of bounds
+    * Correct the documented contract of `cjose_const_memcmp` (equal/not-equal, not ordered) and note
+      that `_cjose_strndup` copies exactly `len` bytes (it is not POSIX `strndup`)
 
 <a name="v0.6.2.7"></a>
 ## [v0.6.2.7](https://github.com/OpenIDC/cjose/compare/v0.6.2.6...v0.6.2.7)  (2026-06-03)
