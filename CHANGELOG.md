@@ -28,6 +28,7 @@
     * Skip the zeroing `memset` in `_cjose_jwe_malloc` for a zero-byte request (`memset(NULL, 0, 0)`
       is undefined behaviour if `malloc(0)` returned NULL)
     * Drop a duplicated `enc_iv` base64url conversion in `_cjose_convert_to_base64` (no-op cleanup)
+    * Size the AES-CBC plaintext buffer in `size_t` to avoid a signed-`int` overflow near `INT_MAX`
 
 <a name="v0.6.2.7"></a>
 ## [v0.6.2.7](https://github.com/OpenIDC/cjose/compare/v0.6.2.6...v0.6.2.7)  (2026-06-03)
