@@ -14,6 +14,8 @@
       serialization dot-scan offsets are no longer truncated back through `int`
     * Parse the shared `"unprotected"` header in `cjose_jwe_import_json` (it was silently dropped),
       restoring symmetry with `cjose_jwe_export_json`
+    * Decode/encode a top-level scalar JSON value in `cjose_header_set_raw` / `cjose_header_get_raw`
+      (`JSON_DECODE_ANY` / `JSON_ENCODE_ANY`), so e.g. an RFC 7797 `"b64":false` header round-trips
 
 <a name="v0.6.2.7"></a>
 ## [v0.6.2.7](https://github.com/OpenIDC/cjose/compare/v0.6.2.6...v0.6.2.7)  (2026-06-03)
