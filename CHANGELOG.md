@@ -7,6 +7,9 @@
   (https://github.com/OpenIDC/cjose/pull/32); thanks @kraj
 * Use a portable thread-local storage specifier in `error.c` so the OpenSSL error buffer builds
   with MSVC.
+* Additional hardening and correctness fixes from a follow-up bug-hunt audit:
+    * Free the RSA factor/CRT `BIGNUM`s and reject an incomplete private-key parameter set on JWK
+      import (OpenSSL >= 1.1) instead of silently dropping and leaking them; adds a regression test
 
 <a name="v0.6.2.7"></a>
 ## [v0.6.2.7](https://github.com/OpenIDC/cjose/compare/v0.6.2.6...v0.6.2.7)  (2026-06-03)
