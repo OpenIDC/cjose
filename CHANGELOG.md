@@ -20,6 +20,8 @@
       possibly-`NULL` `*compact`) and set `err` when the serialization components are missing
     * Clear `err` on a successful `alg:"none"` `cjose_jws_import` so it is not left holding the
       `INVALID_ARG` recorded while rejecting `none` as a signing algorithm
+    * Free the RSA `BIGNUM`s if `RSA_set0_key` is refused, and free the `RSA` in `_RSA_new` when the
+      JWK allocation fails, closing two out-of-memory leaks on the RSA key path (OpenSSL >= 1.1)
 
 <a name="v0.6.2.7"></a>
 ## [v0.6.2.7](https://github.com/OpenIDC/cjose/compare/v0.6.2.6...v0.6.2.7)  (2026-06-03)
