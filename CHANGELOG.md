@@ -18,6 +18,8 @@
       (`JSON_DECODE_ANY` / `JSON_ENCODE_ANY`), so e.g. an RFC 7797 `"b64":false` header round-trips
     * Propagate `_cjose_jws_build_cser` failure out of `cjose_jws_export` (it returned `true` with a
       possibly-`NULL` `*compact`) and set `err` when the serialization components are missing
+    * Clear `err` on a successful `alg:"none"` `cjose_jws_import` so it is not left holding the
+      `INVALID_ARG` recorded while rejecting `none` as a signing algorithm
 
 <a name="v0.6.2.7"></a>
 ## [v0.6.2.7](https://github.com/OpenIDC/cjose/compare/v0.6.2.6...v0.6.2.7)  (2026-06-03)
