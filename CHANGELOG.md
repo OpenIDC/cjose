@@ -16,6 +16,8 @@
       restoring symmetry with `cjose_jwe_export_json`
     * Decode/encode a top-level scalar JSON value in `cjose_header_set_raw` / `cjose_header_get_raw`
       (`JSON_DECODE_ANY` / `JSON_ENCODE_ANY`), so e.g. an RFC 7797 `"b64":false` header round-trips
+    * Propagate `_cjose_jws_build_cser` failure out of `cjose_jws_export` (it returned `true` with a
+      possibly-`NULL` `*compact`) and set `err` when the serialization components are missing
 
 <a name="v0.6.2.7"></a>
 ## [v0.6.2.7](https://github.com/OpenIDC/cjose/compare/v0.6.2.6...v0.6.2.7)  (2026-06-03)
