@@ -27,6 +27,7 @@
     * Reject an empty `"crit"` header list in `_cjose_header_validate_crit` (RFC 7515 section 4.1.11)
     * Skip the zeroing `memset` in `_cjose_jwe_malloc` for a zero-byte request (`memset(NULL, 0, 0)`
       is undefined behaviour if `malloc(0)` returned NULL)
+    * Drop a duplicated `enc_iv` base64url conversion in `_cjose_convert_to_base64` (no-op cleanup)
 
 <a name="v0.6.2.7"></a>
 ## [v0.6.2.7](https://github.com/OpenIDC/cjose/compare/v0.6.2.6...v0.6.2.7)  (2026-06-03)
