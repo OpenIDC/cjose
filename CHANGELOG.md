@@ -25,6 +25,8 @@
     * Free the temporary string in `_cjose_json_stringn` when `json_string` fails (jansson <= 2.6)
     * Guard the base64 encode size calculation against `size_t` overflow, matching the decode side
     * Reject an empty `"crit"` header list in `_cjose_header_validate_crit` (RFC 7515 section 4.1.11)
+    * Skip the zeroing `memset` in `_cjose_jwe_malloc` for a zero-byte request (`memset(NULL, 0, 0)`
+      is undefined behaviour if `malloc(0)` returned NULL)
 
 <a name="v0.6.2.7"></a>
 ## [v0.6.2.7](https://github.com/OpenIDC/cjose/compare/v0.6.2.6...v0.6.2.7)  (2026-06-03)
