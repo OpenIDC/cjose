@@ -30,6 +30,8 @@
     * Drop a duplicated `enc_iv` base64url conversion in `_cjose_convert_to_base64` (no-op cleanup)
     * Size the AES-CBC plaintext buffer in `size_t` to avoid a signed-`int` overflow near `INT_MAX`
     * Drop a dead store of the end pointer after the final write in `concatkdf` otherinfo assembly
+    * Run the base64 decode length sanity check before publishing the output pointer, so its
+      (currently unreachable) failure path cannot leave `*output` dangling at freed memory
 
 <a name="v0.6.2.7"></a>
 ## [v0.6.2.7](https://github.com/OpenIDC/cjose/compare/v0.6.2.6...v0.6.2.7)  (2026-06-03)

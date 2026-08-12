@@ -147,14 +147,16 @@ static inline bool _decode(const char *input, size_t inlen, uint8_t **output, si
         buffer[pos++] = (packed >> 16) & 0xff;
     }
 
-    *output = buffer;
-    *outlen = pos;
-
-    if (*outlen > rlen)
+    // validate before publishing the out-params: the failure path frees buffer,
+    // which would otherwise leave *output dangling
+    if (pos > rlen)
     {
         CJOSE_ERROR(err, CJOSE_ERR_INVALID_STATE);
         goto b64_decode_failed;
     }
+
+    *output = buffer;
+    *outlen = pos;
 
     return true;
 
