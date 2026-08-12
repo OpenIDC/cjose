@@ -7,6 +7,11 @@
   (https://github.com/OpenIDC/cjose/pull/32); thanks @kraj
 * Use a portable thread-local storage specifier in `error.c` so the OpenSSL error buffer builds
   with MSVC.
+* **Security fix**: enforce the RFC 7518 section 3.3 minimum 2048-bit RSA modulus in
+  `cjose_jwk_create_RSA_random` and `cjose_jwk_create_RSA_spec`; note that sub-2048-bit RSA
+  keys are now rejected at creation/import time
+  (https://github.com/OpenIDC/cjose/pull/36, ported from https://github.com/cisco/cjose/pull/136);
+  thanks @kunqn
 * Additional hardening and correctness fixes from a follow-up bug-hunt audit:
     * Free the RSA factor/CRT `BIGNUM`s and reject an incomplete private-key parameter set on JWK
       import (OpenSSL >= 1.1) instead of silently dropping and leaking them; adds a regression test
