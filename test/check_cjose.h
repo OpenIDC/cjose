@@ -7,6 +7,24 @@
 
 #include <check.h>
 
+// Check 0.9.4 and 0.9.5 predate the ck_assert family, which 0.9.6 added on
+// top of fail_unless; these are 0.9.6's definitions, with the integer
+// comparison printing intmax_t like later releases do
+#ifndef ck_assert_msg
+#define ck_assert_msg fail_unless
+#endif
+#ifndef ck_assert
+#define ck_assert(C) ck_assert_msg(C, NULL)
+#endif
+#ifndef ck_assert_int_eq
+#define ck_assert_int_eq(X, Y) \
+    ck_assert_msg((X) == (Y), "Assertion '" #X "==" #Y "' failed: " #X "==%jd, " #Y "==%jd", (intmax_t)(X), (intmax_t)(Y))
+#endif
+#ifndef ck_assert_str_eq
+#define ck_assert_str_eq(X, Y) \
+    ck_assert_msg(0 == strcmp(X, Y), "Assertion '" #X "==" #Y "' failed: " #X "==\"%s\", " #Y "==\"%s\"", X, Y)
+#endif
+
 #ifdef _WIN32
 #define random rand
 #endif
