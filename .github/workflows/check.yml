@@ -1,0 +1,75 @@
+name: Check
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  format:
+    uses: ./.github/workflows/format.yml
+
+  build:
+    needs: format
+    runs-on: ubuntu-latest
+    name: Check ${{ matrix.check }}
+
+    # The other workflows test with the Check that the platform packages
+    # provide, which is a recent release. README.md promises Check 0.9.4 or
+    # newer, so this workflow builds the declared minimum, the releases of
+    # RHEL 7 (0.9.9) and RHEL 8 (0.12.0) and the 0.10.0 of Ubuntu 18.04 to
+    # 20.04 and Debian 9 and 10 from source and runs the tests against them.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - check: 0.9.4
+            url: https://downloads.sourceforge.net/project/check/check/0.9.4/check-0.9.4.tar.gz
+            sha256: 2c1063b06edfd78a97803b36b0cc7bd4e01dd923655540a31a2185b7215f8cbc
+          - check: 0.9.9
+            url: https://downloads.sourceforge.net/project/check/check/0.9.9/check-0.9.9.tar.gz
+            sha256: 1a7a9abb9d051e1b9da4149ce651436a29e20135a40bdb202bd7b2bef3878ac9
+          - check: 0.10.0
+            url: https://github.com/libcheck/check/releases/download/0.10.0/check-0.10.0.tar.gz
+            sha256: f5f50766aa6f8fe5a2df752666ca01a950add45079aa06416b83765b1cf71052
+          - check: 0.12.0
+            url: https://github.com/libcheck/check/releases/download/0.12.0/check-0.12.0.tar.gz
+            sha256: 464201098bee00e90f5c4bdfa94a5d3ead8d641f9025b560a27755a83b824234
+
+    steps:
+    - uses: actions/checkout@v5
+    - name: Dependencies
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y cmake pkg-config gcc libssl-dev libjansson-dev
+        echo "CHECK_PREFIX=$HOME/check-${{ matrix.check }}" >> "$GITHUB_ENV"
+    - name: Cache Check ${{ matrix.check }}
+      id: cache-check
+      uses: actions/cache@v6
+      with:
+        path: ~/check-${{ matrix.check }}
+        key: check-${{ matrix.check }}-${{ runner.os }}-${{ runner.arch }}
+    - name: Build Check ${{ matrix.check }}
+      if: steps.cache-check.outputs.cache-hit != 'true'
+      working-directory: ${{ runner.temp }}
+      run: |
+        curl -fsSL -o "check-${{ matrix.check }}.tar.gz" "${{ matrix.url }}"
+        echo "${{ matrix.sha256 }}  check-${{ matrix.check }}.tar.gz" | sha256sum -c -
+        tar xzf "check-${{ matrix.check }}.tar.gz"
+        cd "check-${{ matrix.check }}"
+        # -fcommon: the 0.9.x test programs define globals in a header; no subunit: keep it self-contained
+        CFLAGS="-g -O2 -fcommon" ./configure --prefix="$CHECK_PREFIX" --disable-static --disable-subunit
+        make -j"$(nproc)"
+        make install
+    - name: Configure
+      run: >
+        PKG_CONFIG_PATH="$CHECK_PREFIX/lib/pkgconfig"
+        cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_DISABLE_FIND_PACKAGE_Check=ON
+    - name: Build
+      run: cmake --build build --parallel
+    - name: Check which Check the tests load
+      run: |
+        PKG_CONFIG_PATH="$CHECK_PREFIX/lib/pkgconfig" pkg-config --modversion check
+        ldd build/check_cjose | grep -F "$CHECK_PREFIX/lib/libcheck"
+    - name: Test
+      run: ctest --test-dir build --output-on-failure
